@@ -1,7 +1,8 @@
-#include "Bitboards.h"
-#include <SDL2/SDL.h>
+#include "ChessGame.h"
+
 
 int main() {
 
+    ChessGame game;
     return 0;
 }
