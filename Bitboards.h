@@ -10,19 +10,6 @@
 typedef unsigned long long int Bitboard;
 typedef char Square;
 
-#define countPieces(board) __builtin_popcountll(board)
-#define toSquare(board) _mm_tzcnt_64(board)
-#define toBoard(square) (Bitboard)1 << (square)
-
-#define getRank(square) ((square) / 8)
-#define getFile(square) ((square) % 8)
-#define getSquare(rank, file) ((rank) * 8 + (file))
-
-#define north(square) ((square) + 8)
-#define south(square) ((square) - 8)
-#define east(square) ((square) - 1)
-#define west(square) ((square) + 1)
-
 /*
  * The least significant bit represents A1, the most significant bit represents H8.
  * The white player always plays from the A1 side, the black player always plays from the H8 side.
@@ -57,6 +44,56 @@ const Bitboard FILE_4 = 0x1010101010101010;
 const Bitboard FILE_5 = 0x2020202020202020;
 const Bitboard FILE_6 = 0x4040404040404040;
 const Bitboard FILE_7 = 0x8080808080808080;
+
+inline int countPieces(Bitboard board)
+{
+    return __builtin_popcountll(board);
+}
+
+inline Square toSquare(Bitboard board)
+{
+    return (Square)_mm_tzcnt_64(board);
+}
+
+inline Bitboard toBoard(Square square)
+{
+    return (Bitboard)1 << square;
+}
+
+inline int getRank(Square square)
+{
+    return square / 8;
+}
+
+inline int getFile(Square square)
+{
+    return square % 8;
+}
+
+inline int getSquare(int rank, int file)
+{
+    return rank * 8 + file;
+}
+
+inline Square north(Square square)
+{
+    return (Square)(square + 8);
+}
+
+inline Square south(Square square)
+{
+    return (Square)(square - 8);
+}
+
+inline Square east(Square square)
+{
+    return (Square)(square + 1);
+}
+
+inline Square west(Square square)
+{
+    return (Square)(square - 1);
+}
 
 inline Square popFirstPiece(Bitboard& board)
 {
