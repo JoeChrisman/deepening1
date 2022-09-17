@@ -35,6 +35,8 @@ private:
     std::vector<SquareUI> board;
     // 12 preloaded piece textures plus one nullptr for a NONE piece
     std::vector<SDL_Texture*> pieceTextures;
+    // the piece the user is dragging
+    SquareUI dragging;
 
     // initialize graphical board with square bounds and colors
     void createBoard();

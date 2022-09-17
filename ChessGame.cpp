@@ -15,6 +15,8 @@ ChessGame::ChessGame()
             &window,
             &renderer);
 
+    dragging.piece = NONE;
+
     createBoard();
     position = new Position(ENGINE_IS_WHITE ?
                                 ENGINE_WHITE_FEN :
@@ -51,12 +53,10 @@ void ChessGame::clearHighlights()
 
 void ChessGame::createBoard()
 {
-    // create a vector to hold each graphical square
     board = std::vector<SquareUI>(64);
-    // create a vector of textures to hold piece textures
-    // 1-12 correspond to piece types, 13 corresponds to the NONE piece. it holds a nullptr.
-    pieceTextures = std::vector<SDL_Texture*>(13);
-    for (int piece = PLAYER_PAWN; piece <= NONE; piece++)
+    pieceTextures = std::vector<SDL_Texture*>(12);
+
+    for (int piece = PLAYER_PAWN; piece < NONE; piece++)
     {
         pieceTextures[piece] = loadPieceTexture((Piece)piece);
     }
@@ -75,9 +75,12 @@ void ChessGame::createBoard()
     }
 }
 
-// bring our visual chess board back to the state of the bitboards
+// bring our graphical chess board back to the state of the bitboards
 void ChessGame::updateBoard()
 {
+    assert(pieceTextures.size() == 12);
+    assert(board.size() == 64);
+
     clearHighlights();
     for (Square squareNum = A1; squareNum <= H8; squareNum++)
     {
@@ -87,11 +90,13 @@ void ChessGame::updateBoard()
 
 /*
  * get a texture for a piece type. this should only be done once for each piece type
- * during the entire duration of the program running. we store the textures in a
+ * during the entire lifetime of the program. we store the textures in a
  * vector to avoid reloading them every frame and making things slow.
 */
 SDL_Texture* ChessGame::loadPieceTexture(Piece piece)
 {
+    assert(piece != NONE);
+
     char engineColor = ENGINE_IS_WHITE ? 'w' : 'b';
     char playerColor = ENGINE_IS_WHITE ? 'b' : 'w';
     std::string imagePath = "Images/";
@@ -111,7 +116,7 @@ SDL_Texture* ChessGame::loadPieceTexture(Piece piece)
         case PLAYER_QUEEN: imagePath += playerColor; imagePath += 'q'; break;
         case PLAYER_KING: imagePath += playerColor; imagePath += 'k'; break;
 
-        default: return nullptr;
+        default: assert(false);
     }
     imagePath += ".bmp";
     SDL_Surface *surface = SDL_LoadBMP(imagePath.c_str());
@@ -122,6 +127,9 @@ SDL_Texture* ChessGame::loadPieceTexture(Piece piece)
 
 void ChessGame::render()
 {
+    assert(renderer);
+    assert(window);
+
     SDL_RenderClear(renderer);
 
     for (SquareUI square : board)
@@ -159,14 +167,28 @@ void ChessGame::render()
                 color & 0xff,
                 255);
 
+        // render the square and its piece if it has one
         SDL_RenderFillRect(renderer, &square.bounds);
+        if (square.piece != NONE)
+        {
+            SDL_RenderCopy(
+                    renderer,
+                    pieceTextures[square.piece],
+                    nullptr,
+                    &square.bounds);
+        }
+    }
+
+    // render the piece we are dragging
+    if (dragging.piece != NONE)
+    {
         SDL_RenderCopy(
                 renderer,
-                pieceTextures[square.piece],
+                pieceTextures[dragging.piece],
                 nullptr,
-                &square.bounds);
-
+                &dragging.bounds);
     }
+
     SDL_RenderPresent(renderer);
 }
 
@@ -178,13 +200,64 @@ void ChessGame::run()
         SDL_Event event;
         if (SDL_PollEvent(&event))
         {
-            // we only need to rerender when there is a user driven event... for now...
-            render();
             // if the user wants to close the window
             if (event.type == SDL_QUIT)
             {
+                // get out of the event loop
                 break;
             }
+            else if (event.type == SDL_MOUSEBUTTONDOWN)
+            {
+                assert(dragging.piece == NONE);
+
+                // figure out which square and piece the user clicked on
+                for (SquareUI& square : board)
+                {
+                    if (SDL_PointInRect(
+                            new SDL_Point{event.button.x, event.button.y},
+                            &square.bounds))
+                    {
+                        if (square.piece != NONE)
+                        {
+                            dragging.piece = square.piece;
+
+                            /*
+                             * always snap the center of the dragging piece to the cursor.
+                             * dragging a piece from the center is better than dragging a
+                             * piece from where we clicked on it because it makes piece placement
+                             * more accurate. we can just drop the piece right where te cursor is.
+                             * otherwise, the user would be pissed off because of how many times
+                             * the piece gets dropped on the wrong square
+                             */
+                            dragging.bounds = square.bounds;
+                            dragging.bounds.x = event.button.x - SQUARE_SIZE / 2;
+                            dragging.bounds.y = event.button.y - SQUARE_SIZE / 2;
+
+                            // remove the piece from its square
+                            square.piece = NONE;
+
+                            break;
+                        }
+
+                    }
+                }
+            }
+            else if (event.type == SDL_MOUSEBUTTONUP)
+            {
+                // stop dragging and update graphical board with the position
+                dragging.piece = NONE;
+                updateBoard();
+            }
+            else if (event.type == SDL_MOUSEMOTION)
+            {
+                if (dragging.piece != NONE)
+                {
+                    dragging.bounds.x = event.motion.x - SQUARE_SIZE / 2;
+                    dragging.bounds.y = event.motion.y - SQUARE_SIZE / 2;
+                }
+            }
+            // we only need to rerender when there is a user driven event... for now...
+            render();
         }
     }
 }

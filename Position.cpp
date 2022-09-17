@@ -61,9 +61,11 @@ Position::Position(const std::string& fen)
  *  we need to ask ourselves: "What piece did I just capture?".
  *  maybe find a way to get rid of the some branching (the if() and the piece<NONE)
  */
-
 Piece Position::getPiece(Square square)
 {
+    assert(square >= A1);
+    assert(square <= H8);
+
     Bitboard board = toBoard(square);
     for (int piece = PLAYER_PAWN; piece < NONE; piece++)
     {
