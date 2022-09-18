@@ -27,7 +27,7 @@ enum Squares
     A8, B8, C8, D8, E8, F8, G8, H8
 };
 
-const Bitboard EMPTY_BITBOARD = 0x0000000000000000;
+const Square NULL_SQUARE = -1;
 
 const Bitboard RANK_0 = 0x00000000000000ff;
 const Bitboard RANK_1 = 0x000000000000ff00;

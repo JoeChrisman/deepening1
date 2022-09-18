@@ -38,6 +38,8 @@ private:
     std::vector<SDL_Texture*> pieceTextures;
     // the piece the user is dragging
     SquareUI dragging;
+    Square draggingFrom;
+    Square draggingTo;
 
     // initialize graphical board with square bounds and colors
     void createBoard();
@@ -48,7 +50,16 @@ private:
     // clear highlighting from move option squares
     void clearMoveOptions();
 
-    void highlightMoveOptions(Bitboard moves);
+    // get whatever square the cursor is over. will return
+    // NULL_SQUARE if the cursor is not over a square
+    Square getSquareHovering(SDL_Point mouse);
+
+    /*
+     * create a move based on what piece the player moved,
+     * where the player moved it from, and where he moved it to.
+     * then we can call position.makeMove(move) to move the pieces around
+     */
+    Move getMove();
 
     SDL_Texture* loadPieceTexture(Piece piece);
     // render the chess board

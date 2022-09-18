@@ -10,6 +10,14 @@
 #include "Bitboards.h"
 #include "Constants.h"
 
+struct Move
+{
+    Square from;
+    Square to;
+    Piece moved;
+    Piece captured;
+};
+
 class Position
 {
 
@@ -24,6 +32,8 @@ public:
      * the vector is indexed using the Piece enumeration in Constants.h
      */
     std::vector<Bitboard> pieces;
+
+    void makeMove(Move& move);
 
 private:
 

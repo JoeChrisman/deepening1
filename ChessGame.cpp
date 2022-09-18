@@ -17,6 +17,8 @@ ChessGame::ChessGame()
 
     search = Search();
 
+    draggingFrom = NULL_SQUARE;
+    draggingTo = NULL_SQUARE;
     dragging.piece = NONE;
 
     createBoard();
@@ -124,6 +126,21 @@ SDL_Texture* ChessGame::loadPieceTexture(Piece piece)
     return texture;
 }
 
+Square ChessGame::getSquareHovering(SDL_Point mouse)
+{
+    for (Square square = A1; square <= H8; square++)
+    {
+        SquareUI& squareUi = board[square];
+        if (SDL_PointInRect(
+                new SDL_Point{mouse.x, mouse.y},
+                &squareUi.bounds))
+        {
+            return square;
+        }
+    }
+    return NULL_SQUARE;
+}
+
 void ChessGame::render()
 {
     assert(renderer);
@@ -193,6 +210,24 @@ void ChessGame::render()
     SDL_RenderPresent(renderer);
 }
 
+Move ChessGame::getMove()
+{
+    assert(dragging.piece != NONE);
+    assert(draggingFrom >= A1);
+    assert(draggingFrom <= H8);
+    assert(draggingTo >= A1);
+    assert(draggingTo <= H8);
+
+    // this will have to be changed later, when we include special moves
+    // like castling, en passant, and promotions.
+    return Move{
+        draggingFrom,
+        draggingTo,
+        dragging.piece,
+        search.moveGen.position.getPiece(draggingTo)
+    };
+}
+
 void ChessGame::run()
 {
     render();
@@ -210,56 +245,66 @@ void ChessGame::run()
             else if (event.type == SDL_MOUSEBUTTONDOWN)
             {
                 assert(dragging.piece == NONE);
+                assert(draggingFrom == NULL_SQUARE);
+                assert(draggingTo == NULL_SQUARE);
 
-                // figure out which square and piece the user clicked on
-                for (Square index = A1; index <= H8; index++)
+                Square clicked = getSquareHovering(
+                        SDL_Point{
+                            event.button.x,
+                            event.button.y});
+
+                if (clicked != NULL_SQUARE)
                 {
-                    SquareUI& square = board[index];
-                    if (SDL_PointInRect(
-                            new SDL_Point{event.button.x, event.button.y},
-                            &square.bounds))
+                    SquareUI& square = board[clicked];
+                    if (square.piece != NONE)
                     {
-                        if (square.piece != NONE)
+                        dragging.piece = square.piece;
+                        draggingFrom = clicked;
+                        dragging.bounds = square.bounds;
+                        dragging.bounds.x = event.button.x - SQUARE_SIZE / 2;
+                        dragging.bounds.y = event.button.y - SQUARE_SIZE / 2;
+
+                        // generate legal moves for the player
+                        search.moveGen.genPlayerMoves();
+                        for (Move& move : search.moveGen.moveList)
                         {
-                            dragging.piece = square.piece;
-
-                            /*
-                             * always snap the center of the dragging piece to the cursor.
-                             * dragging a piece from the center is better than dragging a
-                             * piece from where we clicked on it because it makes piece placement
-                             * more accurate. we can just drop the piece right where te cursor is.
-                             * otherwise, the user would be pissed off because of how many times
-                             * the piece gets dropped on the wrong square
-                             */
-                            dragging.bounds = square.bounds;
-                            dragging.bounds.x = event.button.x - SQUARE_SIZE / 2;
-                            dragging.bounds.y = event.button.y - SQUARE_SIZE / 2;
-
-                            // generate legal moves for the player
-                            search.moveGen.genPlayerMoves();
-                            for (Move& move : search.moveGen.moveList)
+                            if (move.from == clicked)
                             {
-                                if (move.from == index)
-                                {
-                                    // highlight move options
-                                    board[move.to].isMoveOption = true;
-                                }
+                                // highlight move options
+                                board[move.to].isMoveOption = true;
                             }
-
-                            // remove the piece from its square
-                            square.piece = NONE;
-
-                            break;
                         }
 
+                        // remove the piece from its square
+                        square.piece = NONE;
                     }
                 }
             }
             else if (event.type == SDL_MOUSEBUTTONUP)
             {
-                // stop dragging and update graphical board with the position
+                if (dragging.piece != NONE)
+                {
+                    draggingTo = getSquareHovering(
+                            SDL_Point{
+                                    event.button.x,
+                                    event.button.y
+                            });
+
+                    if (draggingTo != NULL_SQUARE && board[draggingTo].isMoveOption)
+                    {
+                        // figure out what move the player made
+                        Move move = getMove();
+                        // make the move the player wants in the position
+                        search.moveGen.position.makeMove(move);
+                    }
+                }
+
+                draggingFrom = NULL_SQUARE;
+                draggingTo = NULL_SQUARE;
                 dragging.piece = NONE;
+                // bring graphics up to date with the position
                 updateBoard();
+
             }
             else if (event.type == SDL_MOUSEMOTION)
             {

@@ -53,6 +53,17 @@ Position::Position(const std::string& fen)
     }
 }
 
+void Position::makeMove(Move& move)
+{
+    pieces[move.moved] |= toBoard(move.to);
+    pieces[move.moved] ^= toBoard(move.from);
+
+    if (move.captured != NONE)
+    {
+        pieces[move.captured] ^= toBoard(move.to);
+    }
+}
+
 /*
  * get a piece type for a given square using the bitboards.
  * there is no efficient way to do this, we will check every bitboard worst case.

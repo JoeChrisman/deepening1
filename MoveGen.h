@@ -7,14 +7,6 @@
 
 #include "Position.h"
 
-struct Move
-{
-    Square from;
-    Square to;
-    Piece moved;
-    Piece captured;
-};
-
 class MoveGen {
 public:
     MoveGen();
