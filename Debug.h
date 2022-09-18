@@ -22,4 +22,28 @@ void printBitboard(Bitboard board)
     }
 }
 
+void printPawnMovement()
+{
+    for (int rank = 0; rank < 8; rank++)
+    {
+        for (int file = 0; file < 8; file++)
+        {
+            Square pawn = getSquare(rank, file);
+            Bitboard captures = 0;
+            if (rank != 0 && rank != 7)
+            {
+                if (file != 0)
+                {
+                    captures |= toBoard(west(south(pawn)));
+                }
+                if (file != 7)
+                {
+                    captures  |= toBoard(east(south(pawn)));
+                }
+            }
+            printf("0x%016llx,\n", captures);
+        }
+    }
+}
+
 #endif //DEEPENING1_DEBUG_H

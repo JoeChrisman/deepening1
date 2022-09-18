@@ -27,6 +27,8 @@ enum Squares
     A8, B8, C8, D8, E8, F8, G8, H8
 };
 
+const Bitboard EMPTY_BITBOARD = 0x0000000000000000;
+
 const Bitboard RANK_0 = 0x00000000000000ff;
 const Bitboard RANK_1 = 0x000000000000ff00;
 const Bitboard RANK_2 = 0x0000000000ff0000;
@@ -57,56 +59,228 @@ inline Square toSquare(Bitboard board)
 
 inline Bitboard toBoard(Square square)
 {
+    assert(square >= A1);
+    assert(square <= H8);
     return (Bitboard)1 << square;
 }
 
 inline int getRank(Square square)
 {
+    assert(square >= A1);
+    assert(square <= H8);
     return square / 8;
 }
 
 inline int getFile(Square square)
 {
+    assert(square >= A1);
+    assert(square <= H8);
     return square % 8;
 }
 
-inline int getSquare(int rank, int file)
+inline Square getSquare(int rank, int file)
 {
-    return rank * 8 + file;
+    assert(rank >= 0);
+    assert(rank <= 7);
+    assert(file >= 0);
+    assert(file <= 7);
+    return (Square)(rank * 8 + file);
+}
+
+inline Bitboard north(Bitboard board)
+{
+    return board << 8;
+}
+
+inline Bitboard east(Bitboard board)
+{
+    return board >> 1;
+}
+
+inline Bitboard south(Bitboard board)
+{
+    return board >> 8;
+}
+
+inline Bitboard west(Bitboard board)
+{
+    return board << 1;
 }
 
 inline Square north(Square square)
 {
+    assert(square >= A1);
+    assert(square <= H8);
     return (Square)(square + 8);
-}
-
-inline Square south(Square square)
-{
-    return (Square)(square - 8);
 }
 
 inline Square east(Square square)
 {
+    assert(square >= A1);
+    assert(square <= H8);
     return (Square)(square + 1);
+}
+
+inline Square south(Square square)
+{
+    assert(square >= A1);
+    assert(square <= H8);
+    return (Square)(square - 8);
 }
 
 inline Square west(Square square)
 {
+    assert(square >= A1);
+    assert(square <= H8);
     return (Square)(square - 1);
 }
 
 inline Square popFirstPiece(Bitboard& board)
 {
-    Square leastSquare = toSquare(board);
-    board ^= toBoard(leastSquare);
-    return leastSquare;
+    Square piece = toSquare(board);
+    board ^= toBoard(piece);
+    return piece;
 }
 
 inline Bitboard popFirstBitboard(Bitboard& board)
 {
-    Bitboard leastBoard = board & (~board + 1);
-    board ^= leastBoard;
-    return leastBoard;
+    Bitboard piece = board & (~board + 1);
+    board ^= piece;
+    return piece;
 }
+
+const Bitboard PLAYER_PAWN_CAPTURES[64] = {
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000020000,
+        0x0000000000050000,
+        0x00000000000a0000,
+        0x0000000000140000,
+        0x0000000000280000,
+        0x0000000000500000,
+        0x0000000000a00000,
+        0x0000000000400000,
+        0x0000000002000000,
+        0x0000000005000000,
+        0x000000000a000000,
+        0x0000000014000000,
+        0x0000000028000000,
+        0x0000000050000000,
+        0x00000000a0000000,
+        0x0000000040000000,
+        0x0000000200000000,
+        0x0000000500000000,
+        0x0000000a00000000,
+        0x0000001400000000,
+        0x0000002800000000,
+        0x0000005000000000,
+        0x000000a000000000,
+        0x0000004000000000,
+        0x0000020000000000,
+        0x0000050000000000,
+        0x00000a0000000000,
+        0x0000140000000000,
+        0x0000280000000000,
+        0x0000500000000000,
+        0x0000a00000000000,
+        0x0000400000000000,
+        0x0002000000000000,
+        0x0005000000000000,
+        0x000a000000000000,
+        0x0014000000000000,
+        0x0028000000000000,
+        0x0050000000000000,
+        0x00a0000000000000,
+        0x0040000000000000,
+        0x0200000000000000,
+        0x0500000000000000,
+        0x0a00000000000000,
+        0x1400000000000000,
+        0x2800000000000000,
+        0x5000000000000000,
+        0xa000000000000000,
+        0x4000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000
+};
+
+const Bitboard ENGINE_PAWN_CAPTURES[64] = {
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000002,
+        0x0000000000000005,
+        0x000000000000000a,
+        0x0000000000000014,
+        0x0000000000000028,
+        0x0000000000000050,
+        0x00000000000000a0,
+        0x0000000000000040,
+        0x0000000000000200,
+        0x0000000000000500,
+        0x0000000000000a00,
+        0x0000000000001400,
+        0x0000000000002800,
+        0x0000000000005000,
+        0x000000000000a000,
+        0x0000000000004000,
+        0x0000000000020000,
+        0x0000000000050000,
+        0x00000000000a0000,
+        0x0000000000140000,
+        0x0000000000280000,
+        0x0000000000500000,
+        0x0000000000a00000,
+        0x0000000000400000,
+        0x0000000002000000,
+        0x0000000005000000,
+        0x000000000a000000,
+        0x0000000014000000,
+        0x0000000028000000,
+        0x0000000050000000,
+        0x00000000a0000000,
+        0x0000000040000000,
+        0x0000000200000000,
+        0x0000000500000000,
+        0x0000000a00000000,
+        0x0000001400000000,
+        0x0000002800000000,
+        0x0000005000000000,
+        0x000000a000000000,
+        0x0000004000000000,
+        0x0000020000000000,
+        0x0000050000000000,
+        0x00000a0000000000,
+        0x0000140000000000,
+        0x0000280000000000,
+        0x0000500000000000,
+        0x0000a00000000000,
+        0x0000400000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+        0x0000000000000000,
+};
 
 #endif //DEEPENING1_BITBOARDS_H

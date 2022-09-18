@@ -10,7 +10,8 @@
 #include "Bitboards.h"
 #include "Constants.h"
 
-class Position {
+class Position
+{
 
 public:
     // create a chess game from a FEN string
@@ -18,12 +19,14 @@ public:
 
     Piece getPiece(Square square);
 
-private:
     /*
      * a vector of bitboards of pieces. there is one bitboard for each piece type.
      * the vector is indexed using the Piece enumeration in Constants.h
      */
     std::vector<Bitboard> pieces;
+
+private:
+
 
 };
 

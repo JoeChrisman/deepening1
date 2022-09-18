@@ -6,7 +6,7 @@
 #define DEEPENING1_CHESSGAME_H
 
 #include <SDL2/SDL.h>
-#include "Position.h"
+#include "Search.h"
 
 // a square on the graphical chess board
 struct SquareUI
@@ -29,7 +29,8 @@ public:
 private:
     SDL_Window* window;
     SDL_Renderer* renderer;
-    Position* position;
+
+    Search search;
 
     // a vector to represent our graphical board
     std::vector<SquareUI> board;
@@ -46,6 +47,8 @@ private:
     void clearHighlights();
     // clear highlighting from move option squares
     void clearMoveOptions();
+
+    void highlightMoveOptions(Bitboard moves);
 
     SDL_Texture* loadPieceTexture(Piece piece);
     // render the chess board

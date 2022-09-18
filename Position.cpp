@@ -17,10 +17,6 @@ Position::Position(const std::string& fen)
     int file = 0;
     for (char c : fen)
     {
-        assert(file <= 8);
-        assert(rank >= 0);
-
-        Bitboard board = toBoard(getSquare(rank, file));
         // if we read a digit, we want to skip over some squares
         if (c >= '0' && c <= '9')
         {
@@ -34,6 +30,8 @@ Position::Position(const std::string& fen)
         }
         else
         {
+            Bitboard board = toBoard(getSquare(rank, file));
+
             switch (c)
             {
                 case 'p': pieces[ENGINE_IS_WHITE ? PLAYER_PAWN : ENGINE_PAWN] |= board; break;

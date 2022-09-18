@@ -15,12 +15,11 @@ ChessGame::ChessGame()
             &window,
             &renderer);
 
+    search = Search();
+
     dragging.piece = NONE;
 
     createBoard();
-    position = new Position(ENGINE_IS_WHITE ?
-                                ENGINE_WHITE_FEN :
-                                ENGINE_BLACK_FEN);
     updateBoard();
 
     run();
@@ -84,7 +83,7 @@ void ChessGame::updateBoard()
     clearHighlights();
     for (Square squareNum = A1; squareNum <= H8; squareNum++)
     {
-        board[squareNum].piece = position->getPiece(squareNum);
+        board[squareNum].piece = search.moveGen.position.getPiece(squareNum);
     }
 }
 
@@ -134,11 +133,13 @@ void ChessGame::render()
 
     for (SquareUI square : board)
     {
-        // because of the way these if/else statements are laid out,
-        // some highlights can have precedence over others. for example,
-        // a previous move highlight can be overridden by a move option highlight.
-        // same thing with a previous move highlight being overridden by a checking highlight.
-        // a square can have multiple highlights at once, but the correct highlight gets chosen here.
+        /*
+         * because of the way these if/else statements are laid out,
+         * some highlights can have precedence over others. for example,
+         * a previous move highlight can be overridden by a move option highlight.
+         * same thing with a previous move highlight being overridden by a checking highlight.
+         * a square can have multiple highlights at once, but the correct highlight gets chosen here.
+         */
         int color;
         if (square.isMoveOption)
         {
@@ -211,8 +212,9 @@ void ChessGame::run()
                 assert(dragging.piece == NONE);
 
                 // figure out which square and piece the user clicked on
-                for (SquareUI& square : board)
+                for (Square index = A1; index <= H8; index++)
                 {
+                    SquareUI& square = board[index];
                     if (SDL_PointInRect(
                             new SDL_Point{event.button.x, event.button.y},
                             &square.bounds))
@@ -232,6 +234,17 @@ void ChessGame::run()
                             dragging.bounds = square.bounds;
                             dragging.bounds.x = event.button.x - SQUARE_SIZE / 2;
                             dragging.bounds.y = event.button.y - SQUARE_SIZE / 2;
+
+                            // generate legal moves for the player
+                            search.moveGen.genPlayerMoves();
+                            for (Move& move : search.moveGen.moveList)
+                            {
+                                if (move.from == index)
+                                {
+                                    // highlight move options
+                                    board[move.to].isMoveOption = true;
+                                }
+                            }
 
                             // remove the piece from its square
                             square.piece = NONE;
