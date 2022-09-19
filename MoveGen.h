@@ -38,6 +38,9 @@ private:
     template<bool isEngine, bool quiets>
     void genKnightMoves();
 
+    template<bool isEngine, bool quiets>
+    void genKingMoves();
+
 
 };
 

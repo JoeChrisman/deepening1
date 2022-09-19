@@ -99,7 +99,47 @@ void printKnightMovement()
             printf("0x%016llx,\n", moves);
         }
     }
+}
 
+void printKingMovement()
+{
+    for (Square square = A1; square <= H8; square++)
+    {
+        Bitboard moves = 0;
+        if (getFile(square) > 0)
+        {
+            moves |= toBoard(west(square));
+            if (getRank(square) > 0)
+            {
+                moves |= toBoard(west(south(square)));
+            }
+            if (getRank(square) < 7)
+            {
+                moves |= toBoard(west(north(square)));
+            }
+        }
+        if (getFile(square) < 7)
+        {
+            moves |= toBoard(east(square));
+            if (getRank(square) > 0)
+            {
+                moves |= toBoard(east(south(square)));
+            }
+            if (getRank(square) < 7)
+            {
+                moves |= toBoard(east(north(square)));
+            }
+        }
+        if (getRank(square) > 0)
+        {
+            moves |= toBoard(south(square));
+        }
+        if (getRank(square) < 7)
+        {
+            moves |= toBoard(north(square));
+        }
+        printf("0x%016llx,\n", moves);
+    }
 }
 
 #endif //DEEPENING1_DEBUG_H

@@ -16,6 +16,7 @@ void MoveGen::genEngineMoves()
     updateBitboards();
     genPawnMoves<true, true>();
     genKnightMoves<true, true>();
+    genKingMoves<true, true>();
 }
 
 void MoveGen::genPlayerMoves()
@@ -24,6 +25,8 @@ void MoveGen::genPlayerMoves()
     updateBitboards();
     genPawnMoves<false, true>();
     genKnightMoves<false, true>();
+    genKingMoves<false, true>();
+
 }
 
 void MoveGen::genEngineCaptures()
@@ -32,6 +35,8 @@ void MoveGen::genEngineCaptures()
     updateBitboards();
     genPawnMoves<true, false>();
     genKnightMoves<true, false>();
+    genKingMoves<true, false>();
+
 
 }
 
@@ -41,7 +46,7 @@ void MoveGen::genPlayerCaptures()
     updateBitboards();
     genPawnMoves<false, false>();
     genKnightMoves<false, false>();
-
+    genKingMoves<false, false>();
 }
 
 void MoveGen::updateBitboards()
@@ -105,6 +110,34 @@ void MoveGen::genKnightMoves()
 }
 
 template<bool isEngine, bool quiets>
+void MoveGen::genKingMoves()
+{
+    Square from = toSquare(position.pieces[isEngine ? ENGINE_KING : PLAYER_KING]);
+    Bitboard moves = KING_MOVES[from];
+    // all moves
+    if (quiets)
+    {
+        moves &= (isEngine ? engineMovable : playerMovable);
+    }
+    // only captures
+    else
+    {
+        moves &= (isEngine ? playerPieces : enginePieces);
+    }
+
+    while (moves)
+    {
+        Square to = popFirstPiece(moves);
+        moveList.push_back(Move{
+            from,
+            to,
+            isEngine ? ENGINE_KING : PLAYER_KING,
+            position.getPiece(to)
+        });
+    }
+}
+
+template<bool isEngine, bool quiets>
 void MoveGen::genPawnMoves()
 {
     Bitboard pawns = position.pieces[isEngine ? ENGINE_PAWN : PLAYER_PAWN];
@@ -162,5 +195,4 @@ void MoveGen::genPawnMoves()
                     position.getPiece(to)});
         }
     }
-    
 }
