@@ -8,3 +8,9 @@ Search::Search()
 {
     moveGen = MoveGen();
 }
+
+Move Search::getBestMove()
+{
+    moveGen.genEngineMoves();
+    return moveGen.moveList[rand() % (int)moveGen.moveList.size()];
+}

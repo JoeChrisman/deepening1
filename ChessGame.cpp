@@ -16,6 +16,7 @@ ChessGame::ChessGame()
             &renderer);
 
     search = Search();
+    enginesTurn = ENGINE_IS_WHITE;
 
     draggingFrom = NULL_SQUARE;
     draggingTo = NULL_SQUARE;
@@ -82,7 +83,6 @@ void ChessGame::updateBoard()
     assert(pieceTextures.size() == 12);
     assert(board.size() == 64);
 
-    clearHighlights();
     for (Square squareNum = A1; squareNum <= H8; squareNum++)
     {
         board[squareNum].piece = search.moveGen.position.getPiece(squareNum);
@@ -168,7 +168,7 @@ void ChessGame::render()
         }
         else if (square.isPreviousMove)
         {
-            color = MOVE_HIGHLIGHT_COLOR;
+            color = PREVIOUS_MOVE_COLOR;
         }
         else if (square.isLight)
         {
@@ -292,16 +292,23 @@ void ChessGame::run()
 
                     if (draggingTo != NULL_SQUARE && board[draggingTo].isMoveOption)
                     {
+                        clearHighlights();
                         // figure out what move the player made
                         Move move = getMove();
                         // make the move the player wants in the position
                         search.moveGen.position.makeMove(move);
+                        board[draggingTo].isPreviousMove = true;
+                        board[draggingFrom].isPreviousMove = true;
+
+                        enginesTurn = true;
                     }
                 }
 
                 draggingFrom = NULL_SQUARE;
                 draggingTo = NULL_SQUARE;
                 dragging.piece = NONE;
+                clearMoveOptions();
+
                 // bring graphics up to date with the position
                 updateBoard();
 
@@ -314,8 +321,22 @@ void ChessGame::run()
                     dragging.bounds.y = event.motion.y - SQUARE_SIZE / 2;
                 }
             }
-            // we only need to rerender when there is a user driven event... for now...
+            // render the player's move
             render();
+            if (enginesTurn)
+            {
+                // spend potentially many seconds calculating a move...
+                Move engineMove = search.getBestMove();
+                // play the move
+                search.moveGen.position.makeMove(engineMove);
+                clearHighlights();
+                updateBoard();
+                board[engineMove.to].isPreviousMove = true;
+                board[engineMove.from].isPreviousMove = true;
+                // render the engine's move
+                render();
+                enginesTurn = false;
+            }
         }
     }
 }

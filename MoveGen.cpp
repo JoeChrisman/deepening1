@@ -26,7 +26,6 @@ void MoveGen::genPlayerMoves()
     genPawnMoves<false, true>();
     genKnightMoves<false, true>();
     genKingMoves<false, true>();
-
 }
 
 void MoveGen::genEngineCaptures()
@@ -36,8 +35,6 @@ void MoveGen::genEngineCaptures()
     genPawnMoves<true, false>();
     genKnightMoves<true, false>();
     genKingMoves<true, false>();
-
-
 }
 
 void MoveGen::genPlayerCaptures()
@@ -83,17 +80,17 @@ void MoveGen::genKnightMoves()
     while (knights)
     {
         Square from = popFirstPiece(knights);
-        Bitboard moves;
+        Bitboard moves = KNIGHT_MOVES[from];
 
         // moves and captures
         if (quiets)
         {
-            moves = KNIGHT_MOVES[from] & (isEngine ? engineMovable : playerMovable);
+            moves &= (isEngine ? engineMovable : playerMovable);
         }
         // captures only
         else
         {
-            moves = KNIGHT_MOVES[from] & (isEngine ? playerPieces : enginePieces);
+            moves &= (isEngine ? playerPieces : enginePieces);
         }
 
         while (moves)

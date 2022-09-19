@@ -13,6 +13,8 @@ public:
 
     MoveGen moveGen;
 
+    Move getBestMove();
+
 private:
 };
 

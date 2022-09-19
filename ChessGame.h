@@ -31,6 +31,7 @@ private:
     SDL_Renderer* renderer;
 
     Search search;
+    bool enginesTurn;
 
     // a vector to represent our graphical board
     std::vector<SquareUI> board;
