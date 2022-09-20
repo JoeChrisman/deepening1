@@ -193,3 +193,142 @@ void MoveGen::genPawnMoves()
         }
     }
 }
+
+Bitboard MoveGen::getCardinalAttacks(Square from, Bitboard blockers, bool captures)
+{
+    Bitboard attacks = EMPTY_BITBOARD;
+    Bitboard attack;
+
+    int rank = getRank(from);
+    int file = getFile(from);
+
+    for (int up = rank; up < 8; up++)
+    {
+        attack = toBoard(getSquare(up, file));
+        if (attack & blockers)
+        {
+            if (captures)
+            {
+                attacks |= attack;
+            }
+            break;
+        }
+        attacks |= attack;
+    }
+    for (int right = file; right < 8; right++)
+    {
+        attack = toBoard(getSquare(rank, right));
+        if (attack & blockers)
+        {
+            if (captures)
+            {
+                attacks |= attack;
+            }
+            break;
+        }
+        attacks |= attack;
+    }
+    for (int down = rank; down >= 0; down--)
+    {
+        attack = toBoard(getSquare(down, file));
+        if (attack & blockers)
+        {
+            if (captures)
+            {
+                attacks |= attack;
+            }
+            break;
+        }
+        attacks |= attack;
+    }
+    for (int left = file; left >= 0 ; left--)
+    {
+        attack = toBoard(getSquare(rank, left));
+        if (attack & blockers)
+        {
+            if (captures)
+            {
+                attacks |= attack;
+            }
+            break;
+        }
+        attacks |= attack;
+    }
+    return attacks;
+}
+
+Bitboard MoveGen::getOrdinalAttacks(Square from, Bitboard blockers, bool captures)
+{
+    Bitboard attacks = EMPTY_BITBOARD;
+    Bitboard attack;
+
+    int rank = getRank(from);
+    int file = getFile(from);
+
+    // northeast
+    int distance = 1;
+    while (isOnBoard(rank + distance, file + distance))
+    {
+        attack = toBoard(getSquare(rank + distance, file + distance));
+        if (attack & blockers)
+        {
+            if (captures)
+            {
+                attacks |= attack;
+            }
+            break;
+        }
+        attacks |= attack;
+        distance++;
+    }
+    // southeast
+    distance = 1;
+    while (isOnBoard(rank - distance, file + distance))
+    {
+        attack = toBoard(getSquare(rank - distance, file + distance));
+        if (attack & blockers)
+        {
+            if (captures)
+            {
+                attacks |= attack;
+            }
+            break;
+        }
+        attacks |= attack;
+        distance++;
+    }
+    // southwest
+    distance = 1;
+    while (isOnBoard(rank - distance, file - distance))
+    {
+        attack = toBoard(getSquare(rank - distance, file - distance));
+        if (attack & blockers)
+        {
+            if (captures)
+            {
+                attacks |= attack;
+            }
+            break;
+        }
+        attacks |= attack;
+        distance++;
+    }
+    // northwest
+    distance = 1;
+    while (isOnBoard(rank + distance, file - distance))
+    {
+        attack = toBoard(getSquare(rank + distance, file - distance));
+        if (attack & blockers)
+        {
+            if (captures)
+            {
+                attacks |= attack;
+            }
+            break;
+        }
+        attacks |= attack;
+        distance++;
+    }
+
+    return attacks;
+}

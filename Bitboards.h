@@ -29,6 +29,9 @@ enum Squares
 
 const Square NULL_SQUARE = -1;
 
+const Bitboard FULL_BITBOARD = 0xffffffffffffffff;
+const Bitboard EMPTY_BITBOARD = 0x0000000000000000;
+
 const Bitboard RANK_0 = 0x00000000000000ff;
 const Bitboard RANK_1 = 0x000000000000ff00;
 const Bitboard RANK_2 = 0x0000000000ff0000;
@@ -133,6 +136,16 @@ inline Square west(Square square)
     assert(square >= A1);
     assert(square <= H8);
     return (Square)(square - 1);
+}
+
+inline bool isOnBoard(Square square)
+{
+    return square >= A1 && square <= H8;
+}
+
+inline bool isOnBoard(int rank, int file)
+{
+    return rank < 8 && rank >= 0 && file < 8 && file >= 0;
 }
 
 inline Square popFirstPiece(Bitboard& board)

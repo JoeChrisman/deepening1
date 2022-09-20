@@ -41,6 +41,14 @@ private:
     template<bool isEngine, bool quiets>
     void genKingMoves();
 
+    // get an attack set for a sliding rook given a bitboard of blocking pieces
+    // and a boolean deciding whether to include the first blocker we encounter
+    Bitboard getCardinalAttacks(Square from, Bitboard blockers, bool captures);
+    // get an attack set for a sliding bishop given a bitboard of blocking pieces
+    // and a boolean deciding whether to include the first blocker we encounter
+    Bitboard getOrdinalAttacks(Square from, Bitboard blockers, bool captures);
+
+
 
 };
 
