@@ -32,6 +32,8 @@ const Square NULL_SQUARE = -1;
 const Bitboard FULL_BITBOARD = 0xffffffffffffffff;
 const Bitboard EMPTY_BITBOARD = 0x0000000000000000;
 
+const Bitboard OUTER_SQUARES = 0xFF818181818181FF;
+
 const Bitboard RANK_0 = 0x00000000000000ff;
 const Bitboard RANK_1 = 0x000000000000ff00;
 const Bitboard RANK_2 = 0x0000000000ff0000;
@@ -160,6 +162,19 @@ inline Bitboard popFirstBitboard(Bitboard& board)
     Bitboard piece = board & (~board + 1);
     board ^= piece;
     return piece;
+}
+
+inline Bitboard getRandomBitboard()
+{
+    Bitboard board = EMPTY_BITBOARD;
+    for (Square square = A1; square <= H8; square++)
+    {
+        if (rand() % 2)
+        {
+            board |= toBoard(square);
+        }
+    }
+    return board;
 }
 
 const Bitboard PLAYER_PAWN_CAPTURES[64] = {

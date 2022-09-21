@@ -8,6 +8,23 @@ MoveGen::MoveGen() : position(ENGINE_IS_WHITE ?
                               ENGINE_WHITE_FEN :
                               ENGINE_BLACK_FEN)
 {
+    for (Square square = A1; square <= H8; square++)
+    {
+        Bitboard cardinalEndpoints = EMPTY_BITBOARD;
+
+        int file = getFile(square);
+        int rank = getRank(square);
+        cardinalEndpoints |= toBoard((Square)(file + 7 * 8)); // north
+        cardinalEndpoints |= toBoard((Square)(rank * 8 + 7)); // east
+        cardinalEndpoints |= toBoard((Square)file); // south
+        cardinalEndpoints |= toBoard((Square)(square - file)); // west
+
+        cardinalMagics[square].blockers = getCardinalAttacks(square, cardinalEndpoints ,false);
+        cardinalMagics[square].magic = getMagicNumber(square, true);
+
+        ordinalMagics[square].blockers = getOrdinalAttacks(square, OUTER_SQUARES, false);
+        ordinalMagics[square].magic = getMagicNumber(square, false);
+    }
 }
 
 void MoveGen::genEngineMoves()
@@ -139,9 +156,6 @@ void MoveGen::genPawnMoves()
 {
     Bitboard pawns = position.pieces[isEngine ? ENGINE_PAWN : PLAYER_PAWN];
 
-    Square from;
-    Square to;
-
     if (quiets)
     {
         // generate one square pawn pushes
@@ -153,8 +167,8 @@ void MoveGen::genPawnMoves()
         // add one square pawn moves
         while (pushed)
         {
-            to = popFirstPiece(pushed);
-            from = isEngine ? north(to) : south(to);
+            Square to = popFirstPiece(pushed);
+            Square from = isEngine ? north(to) : south(to);
 
             moveList.push_back(Move{
                     from,
@@ -165,8 +179,8 @@ void MoveGen::genPawnMoves()
         // add two square pawn moves
         while (pushed2)
         {
-            to = popFirstPiece(pushed2);
-            from = isEngine ? north(north(to)) : south(south(to));
+            Square to = popFirstPiece(pushed2);
+            Square from = isEngine ? north(north(to)) : south(south(to));
 
             moveList.push_back(Move{
                     from,
@@ -179,12 +193,12 @@ void MoveGen::genPawnMoves()
     // add capture moves
     while (pawns)
     {
-        from = popFirstPiece(pawns);
+        Square from = popFirstPiece(pawns);
         Bitboard captures = isEngine ? ENGINE_PAWN_CAPTURES[from] : PLAYER_PAWN_CAPTURES[from];
         captures &= (isEngine ? playerPieces : enginePieces);
         while (captures)
         {
-            to = popFirstPiece(captures);
+            Square to = popFirstPiece(captures);
             moveList.push_back(Move{
                     from,
                     to,
@@ -192,6 +206,80 @@ void MoveGen::genPawnMoves()
                     position.getPiece(to)});
         }
     }
+}
+
+Bitboard MoveGen::getMagicNumber(Square square, bool isCardinal)
+{
+    Bitboard allBlockers = isCardinal ? cardinalMagics[square].blockers : ordinalMagics[square].blockers;
+
+    int numPermutations = 1 << countPieces(allBlockers);
+    int maxPermutations = isCardinal ? 4096 : 512;
+
+    uint64_t attacks[maxPermutations]; // attack bitboards by blocker permutation index
+    uint64_t blockers[maxPermutations]; // blocker bitboard by blocker permutation index
+    uint64_t attacksSeen[maxPermutations]; // attack bitboards by magic hash index
+
+    for (int permutation = 0; permutation < maxPermutations; permutation++)
+    {
+        Bitboard actualBlockers = EMPTY_BITBOARD;
+        Bitboard possibleBlockers = allBlockers;
+        int blockerPermutation = permutation;
+        while (possibleBlockers)
+        {
+            Bitboard blocker = popFirstBitboard(possibleBlockers);
+            if (blockerPermutation % 2)
+            {
+                actualBlockers |= blocker;
+            }
+            blockerPermutation >>= 1;
+        }
+        blockers[permutation] = actualBlockers;
+        attacks[permutation] = isCardinal ? getCardinalAttacks(square, actualBlockers, true) :
+                                            getOrdinalAttacks(square, actualBlockers, true);
+    }
+
+    for (int tries = 0; tries < 1000000; tries++)
+    {
+        for (int i = 0; i < maxPermutations; i++)
+        {
+            attacksSeen[i] = EMPTY_BITBOARD;
+        }
+
+        Bitboard magic = getRandomBitboard() & getRandomBitboard() & getRandomBitboard();
+        for (int permutation = 0; permutation < numPermutations; permutation++)
+        {
+            Bitboard hash = blockers[permutation] * magic >> (isCardinal ? 52 : 55);
+            if (!attacksSeen[hash])
+            {
+                attacksSeen[hash] = attacks[permutation];
+            }
+            else if (attacksSeen[hash] != attacks[permutation])
+            {
+                magic = 0;
+                break;
+            }
+        }
+        // if we found a magic number
+        if (magic)
+        {
+            for (int i = 0; i < maxPermutations; i++)
+            {
+                if (isCardinal)
+                {
+                    cardinalAttacks[square][i] = attacksSeen[i];
+                }
+                else
+                {
+                    ordinalAttacks[square][i] = attacksSeen[i];
+                }
+            }
+
+            return magic;
+        }
+    }
+
+    std::cerr << (isCardinal ? "Cardinal" : "Ordinal") << " magic number generation failed on square " << square << std::endl;
+    assert(false);
 }
 
 Bitboard MoveGen::getCardinalAttacks(Square from, Bitboard blockers, bool captures)
@@ -202,7 +290,7 @@ Bitboard MoveGen::getCardinalAttacks(Square from, Bitboard blockers, bool captur
     int rank = getRank(from);
     int file = getFile(from);
 
-    for (int up = rank; up < 8; up++)
+    for (int up = rank + 1; up < 8; up++)
     {
         attack = toBoard(getSquare(up, file));
         if (attack & blockers)
@@ -215,7 +303,7 @@ Bitboard MoveGen::getCardinalAttacks(Square from, Bitboard blockers, bool captur
         }
         attacks |= attack;
     }
-    for (int right = file; right < 8; right++)
+    for (int right = file + 1; right < 8; right++)
     {
         attack = toBoard(getSquare(rank, right));
         if (attack & blockers)
@@ -228,7 +316,7 @@ Bitboard MoveGen::getCardinalAttacks(Square from, Bitboard blockers, bool captur
         }
         attacks |= attack;
     }
-    for (int down = rank; down >= 0; down--)
+    for (int down = rank - 1; down >= 0; down--)
     {
         attack = toBoard(getSquare(down, file));
         if (attack & blockers)
@@ -241,7 +329,7 @@ Bitboard MoveGen::getCardinalAttacks(Square from, Bitboard blockers, bool captur
         }
         attacks |= attack;
     }
-    for (int left = file; left >= 0 ; left--)
+    for (int left = file - 1; left >= 0 ; left--)
     {
         attack = toBoard(getSquare(rank, left));
         if (attack & blockers)

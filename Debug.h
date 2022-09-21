@@ -6,10 +6,7 @@
 #define DEEPENING1_DEBUG_H
 
 #include <iostream>
-#include "MoveGen.h"
-
-// this file has some code, mostly bitboard releated, for debugging.
-// it also has a bunch of junk. this is where temporary code gets placed
+#include "Bitboards.h"
 
 void printBitboard(Bitboard board)
 {
