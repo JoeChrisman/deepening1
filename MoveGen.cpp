@@ -2,9 +2,6 @@
 // Created by Joe Chrisman on 9/17/22.
 //
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
 #include "MoveGen.h"
 
 MoveGen::MoveGen() : position(ENGINE_IS_WHITE ?
