@@ -15,7 +15,8 @@ public:
 
     std::vector<Move> moveList;
 
-    Bitboard empties; // empty squares
+    Bitboard empties;
+    Bitboard occupied;
     Bitboard enginePieces;
     Bitboard playerPieces;
     Bitboard playerMovable; // engine pieces or empty squares
@@ -40,6 +41,15 @@ private:
 
     template<bool isEngine, bool quiets>
     void genKingMoves();
+
+    template<bool isEngine, bool quiets>
+    void genRookMoves();
+
+    template<bool isEngine, bool quiets>
+    void genBishopMoves();
+
+    template<bool isEngine, bool quiets>
+    void genQueenMoves();
 
     struct MagicSquare
     {

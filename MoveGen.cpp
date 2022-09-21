@@ -34,6 +34,9 @@ void MoveGen::genEngineMoves()
     genPawnMoves<true, true>();
     genKnightMoves<true, true>();
     genKingMoves<true, true>();
+    genRookMoves<true, true>();
+    genBishopMoves<true, true>();
+    genQueenMoves<true, true>();
 }
 
 void MoveGen::genPlayerMoves()
@@ -43,6 +46,9 @@ void MoveGen::genPlayerMoves()
     genPawnMoves<false, true>();
     genKnightMoves<false, true>();
     genKingMoves<false, true>();
+    genRookMoves<false, true>();
+    genBishopMoves<false, true>();
+    genQueenMoves<false, true>();
 }
 
 void MoveGen::genEngineCaptures()
@@ -52,6 +58,9 @@ void MoveGen::genEngineCaptures()
     genPawnMoves<true, false>();
     genKnightMoves<true, false>();
     genKingMoves<true, false>();
+    genRookMoves<true, false>();
+    genBishopMoves<true, false>();
+    genQueenMoves<true, false>();
 }
 
 void MoveGen::genPlayerCaptures()
@@ -61,6 +70,9 @@ void MoveGen::genPlayerCaptures()
     genPawnMoves<false, false>();
     genKnightMoves<false, false>();
     genKingMoves<false, false>();
+    genRookMoves<false, false>();
+    genBishopMoves<false, false>();
+    genQueenMoves<false, false>();
 }
 
 void MoveGen::updateBitboards()
@@ -81,8 +93,9 @@ void MoveGen::updateBitboards()
                     position.pieces[ENGINE_QUEEN] |
                     position.pieces[ENGINE_KING];
 
+    occupied = enginePieces | playerPieces;
     // now figure out what empty squares we can move to
-    empties = ~(enginePieces | playerPieces);
+    empties = ~occupied;
 
     playerMovable = enginePieces | empties;
     engineMovable = playerPieces | empties;
@@ -208,6 +221,103 @@ void MoveGen::genPawnMoves()
     }
 }
 
+template<bool isEngine, bool quiets>
+void MoveGen::genRookMoves()
+{
+    Bitboard rooks = position.pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK];
+
+    while (rooks)
+    {
+        Square from = popFirstPiece(rooks);
+        Bitboard blockers = cardinalMagics[from].blockers & occupied;
+        Bitboard moves = cardinalAttacks[from][blockers * cardinalMagics[from].magic >> 52];
+        if (quiets)
+        {
+            moves &= isEngine ? engineMovable : playerMovable;
+        }
+        else
+        {
+            moves &= isEngine ? playerPieces : enginePieces;
+        }
+        while (moves)
+        {
+            Square to = popFirstPiece(moves);
+            moveList.push_back(Move{
+                from,
+                to,
+                isEngine ? ENGINE_ROOK : PLAYER_ROOK,
+                position.getPiece(to)
+            });
+        }
+    }
+}
+
+template<bool isEngine, bool quiets>
+void MoveGen::genBishopMoves()
+{
+    Bitboard bishops = position.pieces[isEngine ? ENGINE_BISHOP : PLAYER_BISHOP];
+
+    while (bishops)
+    {
+        Square from = popFirstPiece(bishops);
+        Bitboard blockers = ordinalMagics[from].blockers & occupied;
+        Bitboard moves = ordinalAttacks[from][blockers * ordinalMagics[from].magic >> 55];
+        if (quiets)
+        {
+            moves &= isEngine ? engineMovable : playerMovable;
+        }
+        else
+        {
+            moves &= isEngine ? playerPieces : enginePieces;
+        }
+        while (moves)
+        {
+            Square to = popFirstPiece(moves);
+            moveList.push_back(Move{
+                    from,
+                    to,
+                    isEngine ? ENGINE_BISHOP : PLAYER_BISHOP,
+                    position.getPiece(to)
+            });
+        }
+    }
+}
+
+template<bool isEngine, bool quiets>
+void MoveGen::genQueenMoves()
+{
+    Bitboard queens = position.pieces[isEngine ? ENGINE_QUEEN : PLAYER_QUEEN];
+
+    while (queens)
+    {
+        Square from = popFirstPiece(queens);
+
+        Bitboard ordinalBlockers = ordinalMagics[from].blockers & occupied;
+        Bitboard cardinalBlockers = cardinalMagics[from].blockers & occupied;
+        Bitboard moves = cardinalAttacks[from][cardinalBlockers * cardinalMagics[from].magic >> 52];
+        moves |= ordinalAttacks[from][ordinalBlockers * ordinalMagics[from].magic >> 55];
+
+        if (quiets)
+        {
+            moves &= isEngine ? engineMovable : playerMovable;
+        }
+        else
+        {
+            moves &= isEngine ? playerPieces : enginePieces;
+        }
+        while (moves)
+        {
+            Square to = popFirstPiece(moves);
+            moveList.push_back(Move{
+                from,
+                to,
+                isEngine ? ENGINE_QUEEN : PLAYER_QUEEN,
+                position.getPiece(to)
+            });
+        }
+    }
+}
+
 Bitboard MoveGen::getMagicNumber(Square square, bool isCardinal)
 {
     Bitboard allBlockers = isCardinal ? cardinalMagics[square].blockers : ordinalMagics[square].blockers;
@@ -277,8 +387,6 @@ Bitboard MoveGen::getMagicNumber(Square square, bool isCardinal)
             return magic;
         }
     }
-
-    std::cerr << (isCardinal ? "Cardinal" : "Ordinal") << " magic number generation failed on square " << square << std::endl;
     assert(false);
 }
 
