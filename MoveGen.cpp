@@ -15,6 +15,7 @@ void MoveGen::genEngineMoves()
     moveList.clear();
     updateBitboards();
     updateSafeSquares<true>();
+    updateResolverSquares<true>();
 
     genPawnMoves<true, true>();
     genKnightMoves<true, true>();
@@ -29,6 +30,7 @@ void MoveGen::genPlayerMoves()
     moveList.clear();
     updateBitboards();
     updateSafeSquares<false>();
+    updateResolverSquares<false>();
 
     genPawnMoves<false, true>();
     genKnightMoves<false, true>();
@@ -43,6 +45,7 @@ void MoveGen::genEngineCaptures()
     moveList.clear();
     updateBitboards();
     updateSafeSquares<true>();
+    updateResolverSquares<true>();
 
     genPawnMoves<true, false>();
     genKnightMoves<true, false>();
@@ -57,6 +60,7 @@ void MoveGen::genPlayerCaptures()
     moveList.clear();
     updateBitboards();
     updateSafeSquares<false>();
+    updateResolverSquares<false>();
 
     genPawnMoves<false, false>();
     genKnightMoves<false, false>();
@@ -68,7 +72,6 @@ void MoveGen::genPlayerCaptures()
 
 void MoveGen::updateBitboards()
 {
-    safeSquares = FULL_BITBOARD;
 
     // figure out what pieces the engine can capture
     playerPieces = position.pieces[PLAYER_PAWN] |
@@ -95,8 +98,14 @@ void MoveGen::updateBitboards()
 
 }
 
+/*
+ * update the resolverSquares bitboard for a given position and side.
+ * resolver squares are the squares we can move a piece to
+ * in order to resolve a check given by an attacking piece.
+ * we can resolve a check by blocking the attacking piece or capturing it.
+ */
 template<bool isEngine>
-void MoveGen::updateSafeSquares()
+void MoveGen::updateResolverSquares()
 {
     Square king = toSquare(position.pieces[isEngine ? ENGINE_KING : PLAYER_KING]);
 
@@ -134,24 +143,24 @@ void MoveGen::updateSafeSquares()
             if (cardinalAttackers)
             {
                 // any square that blocks the attacking piece is safe
-                safeSquares = cardinalAttacks & getSlidingMoves<true>(toSquare(attackers));
+                resolverSquares = cardinalAttacks & getSlidingMoves<true>(toSquare(attackers));
                 // any square that captures the checking piece is safe
-                safeSquares |= attackers;
+                resolverSquares |= attackers;
             }
             // if the king is being attacked by a bishop or queen
             else if (ordinalAttackers)
             {
                 // any square that blocks the attacking piece is safe
-                safeSquares = ordinalAttacks & getSlidingMoves<false>(toSquare(attackers));
+                resolverSquares = ordinalAttacks & getSlidingMoves<false>(toSquare(attackers));
                 // any square that captures the checking piece is safe
-                safeSquares |= attackers;
+                resolverSquares |= attackers;
             }
             // if the king is being attacked by a pawn or knight
             else
             {
                 // we can't block an attack given by a pawn or knight, they are not sliding pieces.
                 // we can only capture this piece to get out of check
-                safeSquares = attackers;
+                resolverSquares = attackers;
             }
         }
         // if there are multiple pieces attacking the king
@@ -160,16 +169,65 @@ void MoveGen::updateSafeSquares()
             // there is no square we can move to that blocks a double check.
             // also, we can not capture two checking pieces at once.
             // so there are no safe squares, and the king must be moved in this case
-            safeSquares = EMPTY_BITBOARD;
+            resolverSquares = EMPTY_BITBOARD;
         }
     }
     // if there is nothing attacking the king
     else
     {
         // we can move to any square without leaving the king in check
-        safeSquares = FULL_BITBOARD;
+        resolverSquares = FULL_BITBOARD;
     }
+}
 
+/*
+ * update the safeSquares bitboard for a given position and side.
+ * a safe square is a square the king can legally move to.
+ */
+template<bool isEngine>
+void MoveGen::updateSafeSquares()
+{
+    safeSquares = EMPTY_BITBOARD;
+
+    // before we do any sliding piece calculation, remove the king from its square.
+    // we need to do this so the king won't slide along an attacker's path, leaving itself in check.
+    Bitboard king = position.pieces[isEngine ? ENGINE_KING : PLAYER_KING];
+    occupied ^= king;
+
+    // add squares attacked in the cardinal directions
+    Bitboard cardinalAttackers = position.pieces[isEngine ? PLAYER_ROOK : ENGINE_ROOK] |
+                                 position.pieces[isEngine ? PLAYER_QUEEN : ENGINE_QUEEN];
+    while (cardinalAttackers)
+    {
+        safeSquares |= getSlidingMoves<true>(popFirstPiece(cardinalAttackers));
+    }
+    // add squares attacked in the ordinal directions
+    Bitboard ordinalAttackers = position.pieces[isEngine ? PLAYER_BISHOP : ENGINE_BISHOP] |
+                                position.pieces[isEngine ? PLAYER_QUEEN : ENGINE_QUEEN];
+    while (ordinalAttackers)
+    {
+        safeSquares |= getSlidingMoves<false>(popFirstPiece(ordinalAttackers));
+    }
+    // don't forget to add the king back
+    occupied ^= king;
+
+    // add pawn attacks
+    Bitboard pawns = position.pieces[isEngine ? PLAYER_PAWN : ENGINE_PAWN];
+    while (pawns)
+    {
+        Square pawn = popFirstPiece(pawns);
+        safeSquares |= isEngine ? PLAYER_PAWN_CAPTURES[pawn] : ENGINE_PAWN_CAPTURES[pawn];
+    }
+    // add knight attacks
+    Bitboard knights = position.pieces[isEngine ? PLAYER_KNIGHT : ENGINE_KNIGHT];
+    while (knights)
+    {
+        safeSquares |= KNIGHT_MOVES[popFirstPiece(knights)];
+    }
+    // add king attacks
+    safeSquares |= KING_MOVES[toSquare(position.pieces[isEngine ? PLAYER_KING : ENGINE_KING])];
+    // turn "attacked squares" into "safe squares"
+    safeSquares = ~safeSquares;
 }
 
 /*
@@ -201,7 +259,7 @@ void MoveGen::genKnightMoves()
     while (knights)
     {
         Square from = popFirstPiece(knights);
-        Bitboard moves = KNIGHT_MOVES[from] & safeSquares;
+        Bitboard moves = KNIGHT_MOVES[from] & resolverSquares;
 
         // moves and captures
         if (quiets)
@@ -231,7 +289,7 @@ template<bool isEngine, bool quiets>
 void MoveGen::genKingMoves()
 {
     Square from = toSquare(position.pieces[isEngine ? ENGINE_KING : PLAYER_KING]);
-    Bitboard moves = KING_MOVES[from];
+    Bitboard moves = KING_MOVES[from] & safeSquares;
     // all moves
     if (quiets)
     {
@@ -269,8 +327,8 @@ void MoveGen::genPawnMoves()
         // make sure two square pawn push comes from initial rank
         pushed2 &= isEngine ? RANK_4 : RANK_3;
         // throw away pawn moves that leave the king in check
-        pushed &= safeSquares;
-        pushed2 &= safeSquares;
+        pushed &= resolverSquares;
+        pushed2 &= resolverSquares;
 
         // add one square pawn moves
         while (pushed)
@@ -305,7 +363,7 @@ void MoveGen::genPawnMoves()
         Bitboard captures = isEngine ? ENGINE_PAWN_CAPTURES[from] : PLAYER_PAWN_CAPTURES[from];
         captures &= (isEngine ? playerPieces : enginePieces);
         // throw away pawn captures that leave the king in check
-        captures &= safeSquares;
+        captures &= resolverSquares;
         while (captures)
         {
             Square to = popFirstPiece(captures);
@@ -325,7 +383,7 @@ void MoveGen::genRookMoves()
     while (rooks)
     {
         Square from = popFirstPiece(rooks);
-        Bitboard moves = getSlidingMoves<true>(from) & safeSquares;
+        Bitboard moves = getSlidingMoves<true>(from) & resolverSquares;
         // all moves
         if (quiets)
         {
@@ -356,7 +414,7 @@ void MoveGen::genBishopMoves()
     while (bishops)
     {
         Square from = popFirstPiece(bishops);
-        Bitboard moves = getSlidingMoves<false>(from) & safeSquares;
+        Bitboard moves = getSlidingMoves<false>(from) & resolverSquares;
         // all moves
         if (quiets)
         {
@@ -389,7 +447,7 @@ void MoveGen::genQueenMoves()
         Square from = popFirstPiece(queens);
         Bitboard moves = getSlidingMoves<true>(from) | getSlidingMoves<false>(from);
         // throw away queen moves that leave the king in check
-        moves &= safeSquares;
+        moves &= resolverSquares;
         // all moves
         if (quiets)
         {

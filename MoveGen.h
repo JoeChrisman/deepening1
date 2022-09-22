@@ -33,11 +33,15 @@ public:
 
 private:
 
-    // squares we can move a piece to without leaving the king in check
+    // squares where the king is safe to move to
     Bitboard safeSquares;
-
     template<bool isEngine>
     void updateSafeSquares();
+
+    // squares we can move a piece to without leaving the king in check
+    Bitboard resolverSquares;
+    template<bool isEngine>
+    void updateResolverSquares();
 
     template<bool isEngine, bool quiets>
     void genPawnMoves();
