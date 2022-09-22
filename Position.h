@@ -33,6 +33,16 @@ public:
      */
     std::vector<Bitboard> pieces;
 
+    // some extra information about the position
+    Bitboard empties;
+    Bitboard occupied;
+    Bitboard enginePieces;
+    Bitboard playerPieces;
+    Bitboard playerMovable; // engine pieces or empty squares
+    Bitboard engineMovable; // player pieces or empty squares
+    // update the additional information
+    void updateBitboards();
+
     void makeMove(Move& move);
 
 private:

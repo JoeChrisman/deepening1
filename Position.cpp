@@ -51,6 +51,35 @@ Position::Position(const std::string& fen)
             file++;
         }
     }
+    updateBitboards();
+}
+
+void Position::updateBitboards()
+{
+
+    // figure out what pieces the engine can capture
+    playerPieces = pieces[PLAYER_PAWN] |
+                   pieces[PLAYER_KNIGHT] |
+                   pieces[PLAYER_BISHOP] |
+                   pieces[PLAYER_ROOK] |
+                   pieces[PLAYER_QUEEN] |
+                   pieces[PLAYER_KING];
+
+    // figure out what pieces the player can capture
+    enginePieces = pieces[ENGINE_PAWN] |
+                   pieces[ENGINE_KNIGHT] |
+                   pieces[ENGINE_BISHOP] |
+                   pieces[ENGINE_ROOK] |
+                   pieces[ENGINE_QUEEN] |
+                   pieces[ENGINE_KING];
+
+    occupied = enginePieces | playerPieces;
+    // now figure out what empty squares we can move to
+    empties = ~occupied;
+
+    playerMovable = enginePieces | empties;
+    engineMovable = playerPieces | empties;
+
 }
 
 void Position::makeMove(Move& move)
@@ -62,6 +91,8 @@ void Position::makeMove(Move& move)
     {
         pieces[move.captured] ^= toBoard(move.to);
     }
+
+    updateBitboards();
 }
 
 /*

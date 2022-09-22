@@ -13,7 +13,6 @@ MoveGen::MoveGen() : position(ENGINE_IS_WHITE ?
 void MoveGen::genEngineMoves()
 {
     moveList.clear();
-    updateBitboards();
     updateSafeSquares<true>();
     updateResolverSquares<true>();
 
@@ -28,7 +27,6 @@ void MoveGen::genEngineMoves()
 void MoveGen::genPlayerMoves()
 {
     moveList.clear();
-    updateBitboards();
     updateSafeSquares<false>();
     updateResolverSquares<false>();
 
@@ -43,7 +41,6 @@ void MoveGen::genPlayerMoves()
 void MoveGen::genEngineCaptures()
 {
     moveList.clear();
-    updateBitboards();
     updateSafeSquares<true>();
     updateResolverSquares<true>();
 
@@ -58,7 +55,6 @@ void MoveGen::genEngineCaptures()
 void MoveGen::genPlayerCaptures()
 {
     moveList.clear();
-    updateBitboards();
     updateSafeSquares<false>();
     updateResolverSquares<false>();
 
@@ -68,34 +64,6 @@ void MoveGen::genPlayerCaptures()
     genRookMoves<false, false>();
     genBishopMoves<false, false>();
     genQueenMoves<false, false>();
-}
-
-void MoveGen::updateBitboards()
-{
-
-    // figure out what pieces the engine can capture
-    playerPieces = position.pieces[PLAYER_PAWN] |
-                    position.pieces[PLAYER_KNIGHT] |
-                    position.pieces[PLAYER_BISHOP] |
-                    position.pieces[PLAYER_ROOK] |
-                    position.pieces[PLAYER_QUEEN] |
-                    position.pieces[PLAYER_KING];
-
-    // figure out what pieces the player can capture
-    enginePieces = position.pieces[ENGINE_PAWN] |
-                    position.pieces[ENGINE_KNIGHT] |
-                    position.pieces[ENGINE_BISHOP] |
-                    position.pieces[ENGINE_ROOK] |
-                    position.pieces[ENGINE_QUEEN] |
-                    position.pieces[ENGINE_KING];
-
-    occupied = enginePieces | playerPieces;
-    // now figure out what empty squares we can move to
-    empties = ~occupied;
-
-    playerMovable = enginePieces | empties;
-    engineMovable = playerPieces | empties;
-
 }
 
 /*
@@ -192,7 +160,7 @@ void MoveGen::updateSafeSquares()
     // before we do any sliding piece calculation, remove the king from its square.
     // we need to do this so the king won't slide along an attacker's path, leaving itself in check.
     Bitboard king = position.pieces[isEngine ? ENGINE_KING : PLAYER_KING];
-    occupied ^= king;
+    position.occupied ^= king;
 
     // add squares attacked in the cardinal directions
     Bitboard cardinalAttackers = position.pieces[isEngine ? PLAYER_ROOK : ENGINE_ROOK] |
@@ -209,7 +177,7 @@ void MoveGen::updateSafeSquares()
         safeSquares |= getSlidingMoves<false>(popFirstPiece(ordinalAttackers));
     }
     // don't forget to add the king back
-    occupied ^= king;
+    position.occupied ^= king;
 
     // add pawn attacks
     Bitboard pawns = position.pieces[isEngine ? PLAYER_PAWN : ENGINE_PAWN];
@@ -245,11 +213,11 @@ Bitboard MoveGen::getSlidingMoves(Square from)
     {
         return CARDINAL_ATTACKS
             [from]
-            [(CARDINAL_BLOCKERS[from] & occupied) * CARDINAL_MAGICS[from] >> 52];
+            [(CARDINAL_BLOCKERS[from] & position.occupied) * CARDINAL_MAGICS[from] >> 52];
     }
     return ORDINAL_ATTACKS
         [from]
-        [(ORDINAL_BLOCKERS[from] & occupied) * ORDINAL_MAGICS[from] >> 55];
+        [(ORDINAL_BLOCKERS[from] & position.occupied) * ORDINAL_MAGICS[from] >> 55];
 }
 
 template<bool isEngine, bool quiets>
@@ -264,12 +232,12 @@ void MoveGen::genKnightMoves()
         // moves and captures
         if (quiets)
         {
-            moves &= (isEngine ? engineMovable : playerMovable);
+            moves &= (isEngine ? position.engineMovable : position.playerMovable);
         }
         // captures only
         else
         {
-            moves &= (isEngine ? playerPieces : enginePieces);
+            moves &= (isEngine ? position.playerPieces : position.enginePieces);
         }
 
         while (moves)
@@ -293,12 +261,12 @@ void MoveGen::genKingMoves()
     // all moves
     if (quiets)
     {
-        moves &= (isEngine ? engineMovable : playerMovable);
+        moves &= (isEngine ? position.engineMovable : position.playerMovable);
     }
     // only captures
     else
     {
-        moves &= (isEngine ? playerPieces : enginePieces);
+        moves &= (isEngine ? position.playerPieces : position.enginePieces);
     }
 
     while (moves)
@@ -321,9 +289,9 @@ void MoveGen::genPawnMoves()
     if (quiets)
     {
         // generate one square pawn pushes
-        Bitboard pushed = (isEngine ? south(pawns) : north(pawns)) & empties;
+        Bitboard pushed = (isEngine ? south(pawns) : north(pawns)) & position.empties;
         // generate two square pawn pushes
-        Bitboard pushed2 = (isEngine ? south(pushed) : north(pushed)) & empties;
+        Bitboard pushed2 = (isEngine ? south(pushed) : north(pushed)) & position.empties;
         // make sure two square pawn push comes from initial rank
         pushed2 &= isEngine ? RANK_4 : RANK_3;
         // throw away pawn moves that leave the king in check
@@ -361,7 +329,7 @@ void MoveGen::genPawnMoves()
     {
         Square from = popFirstPiece(pawns);
         Bitboard captures = isEngine ? ENGINE_PAWN_CAPTURES[from] : PLAYER_PAWN_CAPTURES[from];
-        captures &= (isEngine ? playerPieces : enginePieces);
+        captures &= (isEngine ? position.playerPieces : position.enginePieces);
         // throw away pawn captures that leave the king in check
         captures &= resolverSquares;
         while (captures)
@@ -387,12 +355,12 @@ void MoveGen::genRookMoves()
         // all moves
         if (quiets)
         {
-            moves &= isEngine ? engineMovable : playerMovable;
+            moves &= isEngine ? position.engineMovable : position.playerMovable;
         }
         // only captures
         else
         {
-            moves &= isEngine ? playerPieces : enginePieces;
+            moves &= isEngine ? position.playerPieces : position.enginePieces;
         }
         while (moves)
         {
@@ -418,12 +386,12 @@ void MoveGen::genBishopMoves()
         // all moves
         if (quiets)
         {
-            moves &= isEngine ? engineMovable : playerMovable;
+            moves &= isEngine ? position.engineMovable : position.playerMovable;
         }
         // only captures
         else
         {
-            moves &= isEngine ? playerPieces : enginePieces;
+            moves &= isEngine ? position.playerPieces : position.enginePieces;
         }
         while (moves)
         {
@@ -451,12 +419,12 @@ void MoveGen::genQueenMoves()
         // all moves
         if (quiets)
         {
-            moves &= isEngine ? engineMovable : playerMovable;
+            moves &= isEngine ? position.engineMovable : position.playerMovable;
         }
         // only captures
         else
         {
-            moves &= isEngine ? playerPieces : enginePieces;
+            moves &= isEngine ? position.playerPieces : position.enginePieces;
         }
         while (moves)
         {
