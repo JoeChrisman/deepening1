@@ -103,6 +103,7 @@ void Position::makeMove(Move& move)
  * TODO: this function will have to be faster. during move generation,
  *  we need to ask ourselves: "What piece did I just capture?".
  *  maybe find a way to get rid of the some branching (the if() and the piece<NONE)
+ *  maybe store pieces in a traditional 8x8 array, alongside the bitboard representation?
  */
 Piece Position::getPiece(Square square)
 {

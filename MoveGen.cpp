@@ -15,6 +15,9 @@ void MoveGen::genEngineMoves()
     moveList.clear();
     updateSafeSquares<true>();
     updateResolverSquares<true>();
+    updatePins<true, true>();
+    updatePins<true, false>();
+
 
     genPawnMoves<true, true>();
     genKnightMoves<true, true>();
@@ -29,6 +32,8 @@ void MoveGen::genPlayerMoves()
     moveList.clear();
     updateSafeSquares<false>();
     updateResolverSquares<false>();
+    updatePins<false, true>();
+    updatePins<false, false>();
 
     genPawnMoves<false, true>();
     genKnightMoves<false, true>();
@@ -43,6 +48,8 @@ void MoveGen::genEngineCaptures()
     moveList.clear();
     updateSafeSquares<true>();
     updateResolverSquares<true>();
+    updatePins<true, true>();
+    updatePins<true, false>();
 
     genPawnMoves<true, false>();
     genKnightMoves<true, false>();
@@ -57,6 +64,8 @@ void MoveGen::genPlayerCaptures()
     moveList.clear();
     updateSafeSquares<false>();
     updateResolverSquares<false>();
+    updatePins<false, true>();
+    updatePins<false, false>();
 
     genPawnMoves<false, false>();
     genKnightMoves<false, false>();
@@ -64,6 +73,63 @@ void MoveGen::genPlayerCaptures()
     genRookMoves<false, false>();
     genBishopMoves<false, false>();
     genQueenMoves<false, false>();
+}
+
+/*
+ * we need a way to ensure pieces do not break absolute pins.
+ * an absolute pin is when a piece has restricted movement
+ * because some (or all) of its moves would allow an enemy attack on the king.
+ * To keep track of pins, we have one bitboard for each pin direction, and
+ * bits along the pin are set in these bitboards. we can easily filter moves this way
+ */
+template<bool isEngine, bool isCardinal>
+void MoveGen::updatePins()
+{
+    Square king = toSquare(position.pieces[isEngine ? ENGINE_KING : PLAYER_KING]);
+
+    // clear whatever pins may have existed last turn
+    (isCardinal ? cardinalPins : ordinalPins) = EMPTY_BITBOARD;
+
+    // scan outward from the king
+    Bitboard pinned = getSlidingMoves<isCardinal>(king);
+    // isolate friendly pieces along the king's outward rays
+    pinned &= (isEngine ? position.enginePieces : position.playerPieces);
+
+    // remove the pieces we suspect are pinned
+    position.occupied ^= pinned;
+
+    // scan outward from the king again, but this time,
+    // the pieces that might be pinned have been removed
+    Bitboard pins = getSlidingMoves<isCardinal>(king);
+
+    // isolate sliding enemy pieces along the king's outwards rays
+    Bitboard pinners = pins;
+    if (isCardinal)
+    {
+        pinners &= position.pieces[isEngine ? PLAYER_ROOK : ENGINE_ROOK] |
+                   position.pieces[isEngine ? PLAYER_QUEEN : ENGINE_QUEEN];
+    }
+    else
+    {
+        pinners &= position.pieces[isEngine ? PLAYER_BISHOP : ENGINE_BISHOP] |
+                   position.pieces[isEngine ? PLAYER_QUEEN : ENGINE_QUEEN];
+    }
+    while (pinners)
+    {
+        Square pinner = popFirstPiece(pinners);
+
+        // find the attack rays of the pinning piece
+        Bitboard pin = getSlidingMoves<isCardinal>(pinner);
+        // isolate the pins. pin is all the attack rays of the pinning piece,
+        // pins is all the attack rays from the king, ignoring the pinned piece along the way
+        pin &= pins;
+        // add the pinning piece. we are allowed to capture it if we can
+        pin |= toBoard(pinner);
+
+        (isCardinal ? cardinalPins : ordinalPins) |= pin;
+    }
+    // put the pieces we suspect are pinned back on the board
+    position.occupied ^= pinned;
 }
 
 /*
@@ -156,10 +222,10 @@ template<bool isEngine>
 void MoveGen::updateSafeSquares()
 {
     safeSquares = EMPTY_BITBOARD;
+    Bitboard king = position.pieces[isEngine ? ENGINE_KING : PLAYER_KING];
 
     // before we do any sliding piece calculation, remove the king from its square.
     // we need to do this so the king won't slide along an attacker's path, leaving itself in check.
-    Bitboard king = position.pieces[isEngine ? ENGINE_KING : PLAYER_KING];
     position.occupied ^= king;
 
     // add squares attacked in the cardinal directions
@@ -176,7 +242,7 @@ void MoveGen::updateSafeSquares()
     {
         safeSquares |= getSlidingMoves<false>(popFirstPiece(ordinalAttackers));
     }
-    // don't forget to add the king back
+    // put the king back on the board
     position.occupied ^= king;
 
     // add pawn attacks
@@ -224,6 +290,9 @@ template<bool isEngine, bool quiets>
 void MoveGen::genKnightMoves()
 {
     Bitboard knights = position.pieces[isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT];
+    // don't generate moves for pinned knights
+    knights &= ~(cardinalPins | ordinalPins);
+
     while (knights)
     {
         Square from = popFirstPiece(knights);
@@ -257,7 +326,11 @@ template<bool isEngine, bool quiets>
 void MoveGen::genKingMoves()
 {
     Square from = toSquare(position.pieces[isEngine ? ENGINE_KING : PLAYER_KING]);
-    Bitboard moves = KING_MOVES[from] & safeSquares;
+    Bitboard moves = KING_MOVES[from];
+
+    // don't let the king walk onto attacked squares
+    moves &= safeSquares;
+
     // all moves
     if (quiets)
     {
@@ -288,12 +361,18 @@ void MoveGen::genPawnMoves()
     // generate non-captures
     if (quiets)
     {
+        // don't generate pawn pushes for diagonally pinned pawns
+        Bitboard pushed = pawns & ~ordinalPins;
         // generate one square pawn pushes
-        Bitboard pushed = (isEngine ? south(pawns) : north(pawns)) & position.empties;
+        pushed = isEngine ? south(pushed) : north(pushed);
+        // we can only push a pawn if the square in front of it is empty
+        pushed &= position.empties;
         // generate two square pawn pushes
-        Bitboard pushed2 = (isEngine ? south(pushed) : north(pushed)) & position.empties;
-        // make sure two square pawn push comes from initial rank
+        Bitboard pushed2 = isEngine ? south(pushed) : north(pushed);
+        // make sure a two square pawn push comes from the initial rank
         pushed2 &= isEngine ? RANK_4 : RANK_3;
+        // we can only push a pawn if the square in front of it is empty
+        pushed2 &= position.empties;
         // throw away pawn moves that leave the king in check
         pushed &= resolverSquares;
         pushed2 &= resolverSquares;
@@ -324,14 +403,23 @@ void MoveGen::genPawnMoves()
         }
     }
 
+    // don't generate capture moves for cardinal pinned pawns
+    pawns &= ~cardinalPins;
     // generate captures
     while (pawns)
     {
         Square from = popFirstPiece(pawns);
         Bitboard captures = isEngine ? ENGINE_PAWN_CAPTURES[from] : PLAYER_PAWN_CAPTURES[from];
+        // make sure we can only capture enemy pieces
         captures &= (isEngine ? position.playerPieces : position.enginePieces);
         // throw away pawn captures that leave the king in check
         captures &= resolverSquares;
+        // if this pawn is ordinal pinned
+        if (toBoard(from) & ordinalPins)
+        {
+            // we can still capture, but only along the pin
+            captures &= ordinalPins;
+        }
         while (captures)
         {
             Square to = popFirstPiece(captures);
@@ -348,10 +436,23 @@ template<bool isEngine, bool quiets>
 void MoveGen::genRookMoves()
 {
     Bitboard rooks = position.pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK];
+    // don't generate moves for an ordinal pinned cardinal piece
+    rooks &= ~ordinalPins;
+
     while (rooks)
     {
         Square from = popFirstPiece(rooks);
-        Bitboard moves = getSlidingMoves<true>(from) & resolverSquares;
+        Bitboard moves = getSlidingMoves<true>(from);
+
+        // throw away moves that leave the king in check
+        moves &= resolverSquares;
+        // if this cardinal piece is cardinal pinned
+        if (toBoard(from) & cardinalPins)
+        {
+            // it can still move, but it is restricted along the pin
+            moves &= cardinalPins;
+        }
+
         // all moves
         if (quiets)
         {
@@ -379,10 +480,22 @@ template<bool isEngine, bool quiets>
 void MoveGen::genBishopMoves()
 {
     Bitboard bishops = position.pieces[isEngine ? ENGINE_BISHOP : PLAYER_BISHOP];
+    // don't generate moves for a cardinal pinned ordinal piece
+    bishops &= ~cardinalPins;
     while (bishops)
     {
         Square from = popFirstPiece(bishops);
-        Bitboard moves = getSlidingMoves<false>(from) & resolverSquares;
+        Bitboard moves = getSlidingMoves<false>(from);
+
+        // throw away moves that leave the king in check
+        moves &= resolverSquares;
+        // if this ordinal piece is ordinal pinned
+        if (toBoard(from) & ordinalPins)
+        {
+            // it can still move, but it is restricted along the pin
+            moves &= ordinalPins;
+        }
+
         // all moves
         if (quiets)
         {
@@ -413,7 +526,34 @@ void MoveGen::genQueenMoves()
     while (queens)
     {
         Square from = popFirstPiece(queens);
-        Bitboard moves = getSlidingMoves<true>(from) | getSlidingMoves<false>(from);
+        Bitboard queen = toBoard(from);
+        Bitboard moves = EMPTY_BITBOARD;
+
+        // if we are not cardinal pinned
+        if (queen & ~cardinalPins)
+        {
+            // generate ordinal moves
+            moves |= getSlidingMoves<false>(from);
+            // if we are ordinal pinned
+            if (queen & ordinalPins)
+            {
+                // restrict queen movement to ordinal pin
+                moves &= ordinalPins;
+            }
+        }
+        // if we are not ordinal pinned
+        if (queen & ~ordinalPins)
+        {
+            // generate cardinal moves
+            moves |= getSlidingMoves<true>(from);
+            // if we are cardinal pinned
+            if (queen & cardinalPins)
+            {
+                // restrict queen movement to cardinal pin
+                moves &= cardinalPins;
+            }
+        }
+
         // throw away queen moves that leave the king in check
         moves &= resolverSquares;
         // all moves

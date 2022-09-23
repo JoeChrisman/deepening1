@@ -34,6 +34,13 @@ private:
     template<bool isEngine>
     void updateResolverSquares();
 
+    // squares along all ordinal pins
+    Bitboard cardinalPins;
+    // squares along all cardinal pins
+    Bitboard ordinalPins;
+    template<bool isEngine, bool isCardinal>
+    void updatePins();
+
     template<bool isEngine, bool quiets>
     void genPawnMoves();
 
