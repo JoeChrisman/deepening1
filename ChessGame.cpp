@@ -73,7 +73,7 @@ void ChessGame::createBoard()
             SQUARE_SIZE,
             SQUARE_SIZE
         };
-        board[square].isLight = rank % 2 == file % 2;
+        board[square].isLight = rank % 2 != file % 2;
     }
 }
 
