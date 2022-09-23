@@ -264,8 +264,15 @@ void ChessGame::run()
                         dragging.bounds.x = event.button.x - SQUARE_SIZE / 2;
                         dragging.bounds.y = event.button.y - SQUARE_SIZE / 2;
 
-                        // generate legal moves for the player
-                        search.moveGen.genPlayerMoves();
+                        // generate legal moves
+                        if (enginesTurn)
+                        {
+                            search.moveGen.genEngineMoves();
+                        }
+                        else
+                        {
+                            search.moveGen.genPlayerMoves();
+                        }
                         for (Move& move : search.moveGen.moveList)
                         {
                             if (move.from == clicked)
@@ -300,7 +307,7 @@ void ChessGame::run()
                         board[draggingTo].isPreviousMove = true;
                         board[draggingFrom].isPreviousMove = true;
 
-                        enginesTurn = true;
+                        enginesTurn = !enginesTurn;
                     }
                 }
 
@@ -323,6 +330,7 @@ void ChessGame::run()
             }
             // render the player's move
             render();
+            /*
             if (enginesTurn)
             {
                 // spend potentially many seconds calculating a move...
@@ -336,7 +344,7 @@ void ChessGame::run()
                 // render the engine's move
                 render();
                 enginesTurn = false;
-            }
+            }*/
         }
     }
 }
