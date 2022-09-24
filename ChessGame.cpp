@@ -218,9 +218,28 @@ Move ChessGame::getMove()
     assert(draggingTo >= A1);
     assert(draggingTo <= H8);
 
+    MoveType type = NORMAL;
+
+    // if we are moving a king
+    if (dragging.piece == ENGINE_KING || dragging.piece == PLAYER_KING)
+    {
+        // if the king is moving along a rank
+        if (getRank(draggingFrom) == getRank(draggingTo))
+        {
+            // if the king moved more than one square
+            if (abs(draggingTo - draggingFrom) > 1)
+            {
+                // we castled
+                type = CASTLE;
+            }
+        }
+
+    }
+
     // this will have to be changed later, when we include special moves
     // like castling, en passant, and promotions.
     return Move{
+        type,
         draggingFrom,
         draggingTo,
         dragging.piece,
@@ -291,19 +310,25 @@ void ChessGame::run()
             {
                 if (dragging.piece != NONE)
                 {
-                    draggingTo = getSquareHovering(
-                            SDL_Point{
-                                    event.button.x,
-                                    event.button.y
-                            });
+                    draggingTo = getSquareHovering(SDL_Point{
+                        event.button.x,
+                        event.button.y
+                    });
 
                     if (draggingTo != NULL_SQUARE && board[draggingTo].isMoveOption)
                     {
                         clearHighlights();
                         // figure out what move the player made
                         Move move = getMove();
-                        // make the move the player wants in the position
-                        search.moveGen.position.makeMove(move);
+                        if (enginesTurn)
+                        {
+                            search.moveGen.position.makeMove<true>(move);
+                        }
+                        else
+                        {
+                            search.moveGen.position.makeMove<false>(move);
+
+                        }
                         board[draggingTo].isPreviousMove = true;
                         board[draggingFrom].isPreviousMove = true;
 

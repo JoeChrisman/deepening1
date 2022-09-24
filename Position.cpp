@@ -51,6 +51,12 @@ Position::Position(const std::string& fen)
             file++;
         }
     }
+
+    engineCastleKingside = true;
+    engineCastleQueenside = true;
+    playerCastleKingside = true;
+    playerCastleQueenside = true;
+
     updateBitboards();
 }
 
@@ -82,18 +88,6 @@ void Position::updateBitboards()
 
 }
 
-void Position::makeMove(Move& move)
-{
-    pieces[move.moved] |= toBoard(move.to);
-    pieces[move.moved] ^= toBoard(move.from);
-
-    if (move.captured != NONE)
-    {
-        pieces[move.captured] ^= toBoard(move.to);
-    }
-
-    updateBitboards();
-}
 
 /*
  * get a piece type for a given square using the bitboards.

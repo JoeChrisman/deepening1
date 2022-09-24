@@ -217,6 +217,8 @@ void MoveGen::updateResolverSquares()
 /*
  * update the safeSquares bitboard for a given position and side.
  * a safe square is a square the king can legally move to.
+ * We calculate the safe squares by finding all the opponent's
+ * pseudo-legal attacks. any square that is not attacked is safe.
  */
 template<bool isEngine>
 void MoveGen::updateSafeSquares()
@@ -313,6 +315,7 @@ void MoveGen::genKnightMoves()
         {
             Square to = popFirstPiece(moves);
             moveList.push_back(Move{
+                NORMAL,
                 from,
                 to,
                 isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT,
@@ -335,6 +338,48 @@ void MoveGen::genKingMoves()
     if (quiets)
     {
         moves &= (isEngine ? position.engineMovable : position.playerMovable);
+        Bitboard king = toBoard(from);
+        // if the king is not in check, we might be able to castle
+        if (king & safeSquares)
+        {
+            // if the king is allowed to castle queenside
+            if (isEngine ? position.engineCastleQueenside : position.playerCastleQueenside)
+            {
+                // if there are no pieces in between the king and rook
+                if (!(QUEENSIDE_CASTLE_EMPTIES & (isEngine ? RANK_7 : RANK_0) & position.occupied))
+                {
+                    // if there are no attacked squares along the king's path
+                    if (!(QUEENSIDE_CASTLE_CHECKS & (isEngine ? RANK_7 : RANK_0) & ~safeSquares))
+                    {
+                        // we can castle queenside. add the castling move
+                        moveList.push_back(Move{
+                            CASTLE,
+                            from,
+                            ENGINE_IS_WHITE ? east(east(from)) : west(west(from)),
+                            isEngine ? ENGINE_KING : PLAYER_KING,
+                            NONE
+                        });
+                    }
+                }
+            }
+
+            // if the king is allowed to castle kingside
+            if (isEngine ? position.engineCastleKingside : position.playerCastleKingside)
+            {
+                // if there are no pieces along the king's path and all the squares are safe
+                if (!(KINGSIDE_CASTLE_CHECKS & (isEngine ? RANK_7 : RANK_0) & (position.occupied | ~safeSquares)))
+                {
+                    // we can castle kingside. add the castling move
+                    moveList.push_back(Move{
+                        CASTLE,
+                        from,
+                        ENGINE_IS_WHITE ? west(west(from)) : east(east(from)),
+                        isEngine ? ENGINE_KING : PLAYER_KING,
+                        NONE
+                    });
+                }
+            }
+        }
     }
     // only captures
     else
@@ -346,6 +391,7 @@ void MoveGen::genKingMoves()
     {
         Square to = popFirstPiece(moves);
         moveList.push_back(Move{
+            NORMAL,
             from,
             to,
             isEngine ? ENGINE_KING : PLAYER_KING,
@@ -384,10 +430,12 @@ void MoveGen::genPawnMoves()
             Square from = isEngine ? north(to) : south(to);
 
             moveList.push_back(Move{
-                    from,
-                    to,
-                    isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                    NONE});
+                NORMAL,
+                from,
+                to,
+                isEngine ? ENGINE_PAWN : PLAYER_PAWN,
+                NONE
+            });
         }
         // add two square pawn moves
         while (pushed2)
@@ -396,10 +444,12 @@ void MoveGen::genPawnMoves()
             Square from = isEngine ? north(north(to)) : south(south(to));
 
             moveList.push_back(Move{
-                    from,
-                    to,
-                    isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                    NONE});
+                NORMAL,
+                from,
+                to,
+                isEngine ? ENGINE_PAWN : PLAYER_PAWN,
+                NONE
+            });
         }
     }
 
@@ -424,10 +474,12 @@ void MoveGen::genPawnMoves()
         {
             Square to = popFirstPiece(captures);
             moveList.push_back(Move{
-                    from,
-                    to,
-                    isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                    position.getPiece(to)});
+                NORMAL,
+                from,
+                to,
+                isEngine ? ENGINE_PAWN : PLAYER_PAWN,
+                position.getPiece(to)
+            });
         }
     }
 }
@@ -467,6 +519,7 @@ void MoveGen::genRookMoves()
         {
             Square to = popFirstPiece(moves);
             moveList.push_back(Move{
+                NORMAL,
                 from,
                 to,
                 isEngine ? ENGINE_ROOK : PLAYER_ROOK,
@@ -510,10 +563,11 @@ void MoveGen::genBishopMoves()
         {
             Square to = popFirstPiece(moves);
             moveList.push_back(Move{
-                    from,
-                    to,
-                    isEngine ? ENGINE_BISHOP : PLAYER_BISHOP,
-                    position.getPiece(to)
+                NORMAL,
+                from,
+                to,
+                isEngine ? ENGINE_BISHOP : PLAYER_BISHOP,
+                position.getPiece(to)
             });
         }
     }
@@ -570,6 +624,7 @@ void MoveGen::genQueenMoves()
         {
             Square to = popFirstPiece(moves);
             moveList.push_back(Move{
+                NORMAL,
                 from,
                 to,
                 isEngine ? ENGINE_QUEEN : PLAYER_QUEEN,

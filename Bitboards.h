@@ -6,6 +6,7 @@
 #define DEEPENING1_BITBOARDS_H
 
 #include <x86intrin.h>
+#include "Constants.h"
 #include "Magics.h"
 
 typedef unsigned long long int Bitboard;
@@ -34,6 +35,17 @@ const Bitboard FULL_BITBOARD = 0xffffffffffffffff;
 const Bitboard EMPTY_BITBOARD = 0x0000000000000000;
 
 const Bitboard OUTER_SQUARES = 0xFF818181818181FF;
+
+// these squares must be safe for the king to castle queenside
+const Bitboard QUEENSIDE_CASTLE_CHECKS = ENGINE_IS_WHITE ? 0x3000000000000030
+                                                         : 0x0c0000000000000c;
+// these squares must be empty for the king to castle queenside
+const Bitboard QUEENSIDE_CASTLE_EMPTIES = ENGINE_IS_WHITE ? 0x7000000000000070
+                                                          : 0x0e0000000000000e;
+
+// these squares must be empty and safe for the king to castle kingside
+const Bitboard KINGSIDE_CASTLE_CHECKS = ENGINE_IS_WHITE ? 0x0600000000000006
+                                                        : 0x6000000000000060;
 
 const Bitboard RANK_0 = 0x00000000000000ff;
 const Bitboard RANK_1 = 0x000000000000ff00;

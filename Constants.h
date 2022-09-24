@@ -9,7 +9,7 @@ const int WINDOW_SIZE = 800;
 const int SQUARES_WIDE = 8;
 const int SQUARE_SIZE = WINDOW_SIZE / SQUARES_WIDE;
 
-const bool ENGINE_IS_WHITE = true;
+const bool ENGINE_IS_WHITE = false;
 
 /*
  * FEN strings for the initial board state.
