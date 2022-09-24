@@ -7,11 +7,14 @@
 
 #include "Position.h"
 
-class MoveGen {
-public:
-    MoveGen();
+class MoveGen
+{
 
-    Position position;
+public:
+
+    MoveGen(Position& _position);
+
+    Position& position;
 
     std::vector<Move> moveList;
 
@@ -61,6 +64,7 @@ private:
 
     template<bool isCardinal>
     Bitboard getSlidingMoves(Square from);
+
 };
 
 

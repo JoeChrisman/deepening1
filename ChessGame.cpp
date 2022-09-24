@@ -4,7 +4,9 @@
 
 #include "ChessGame.h"
 
-ChessGame::ChessGame()
+ChessGame::ChessGame(Position& _position) :
+search(_position),
+position(_position)
 {
     SDL_Init(SDL_INIT_EVERYTHING);
 
@@ -14,8 +16,6 @@ ChessGame::ChessGame()
             0,
             &window,
             &renderer);
-
-    search = Search();
 
     draggingFrom = NULL_SQUARE;
     draggingTo = NULL_SQUARE;
@@ -84,7 +84,7 @@ void ChessGame::updateBoard()
 
     for (Square squareNum = A1; squareNum <= H8; squareNum++)
     {
-        board[squareNum].piece = search.moveGen.position.getPiece(squareNum);
+        board[squareNum].piece = position.getPiece(squareNum);
     }
 }
 
@@ -242,7 +242,7 @@ Move ChessGame::getMove()
         draggingFrom,
         draggingTo,
         dragging.piece,
-        search.moveGen.position.getPiece(draggingTo)
+        position.getPiece(draggingTo)
     };
 }
 
@@ -283,7 +283,7 @@ void ChessGame::run()
                         dragging.bounds.y = event.button.y - SQUARE_SIZE / 2;
 
                         // generate legal moves
-                        if (search.moveGen.position.isEngineMove)
+                        if (position.isEngineMove)
                         {
                             search.moveGen.genEngineMoves();
                         }
@@ -319,13 +319,13 @@ void ChessGame::run()
                         clearHighlights();
                         // figure out what move the player made
                         Move move = getMove();
-                        if (search.moveGen.position.isEngineMove)
+                        if (position.isEngineMove)
                         {
-                            search.moveGen.position.makeMove<true>(move);
+                            position.makeMove<true>(move);
                         }
                         else
                         {
-                            search.moveGen.position.makeMove<false>(move);
+                            position.makeMove<false>(move);
 
                         }
                         board[draggingTo].isPreviousMove = true;

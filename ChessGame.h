@@ -23,7 +23,7 @@ struct SquareUI
 class ChessGame
 {
 public:
-    ChessGame();
+    ChessGame(Position& _position);
     ~ChessGame();
 
 private:
@@ -31,6 +31,7 @@ private:
     SDL_Renderer* renderer;
 
     Search search;
+    Position& position;
 
     // a vector to represent our graphical board
     std::vector<SquareUI> board;

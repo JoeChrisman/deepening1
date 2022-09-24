@@ -1,6 +1,8 @@
 #include "ChessGame.h"
 
-int main() {
-    ChessGame game;
+int main()
+{
+    Position position(INITIAL_FEN);
+    ChessGame game(position);
     return 0;
 }

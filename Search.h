@@ -9,9 +9,10 @@
 
 class Search {
 public:
-    Search();
+    Search(Position& _position);
 
     MoveGen moveGen;
+    Position& position;
 
     Move getBestMove();
 

@@ -4,9 +4,10 @@
 
 #include "Search.h"
 
-Search::Search()
+Search::Search(Position& _position) :
+moveGen(_position),
+position(_position)
 {
-    moveGen = MoveGen();
 }
 
 Move Search::getBestMove()

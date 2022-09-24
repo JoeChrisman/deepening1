@@ -4,9 +4,8 @@
 
 #include "MoveGen.h"
 
-MoveGen::MoveGen() : position(ENGINE_IS_WHITE ?
-                              ENGINE_WHITE_FEN :
-                              ENGINE_BLACK_FEN)
+MoveGen::MoveGen(Position& _position) :
+position(_position)
 {
 }
 

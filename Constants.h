@@ -9,13 +9,13 @@ const int WINDOW_SIZE = 800;
 const int SQUARES_WIDE = 8;
 const int SQUARE_SIZE = WINDOW_SIZE / SQUARES_WIDE;
 
-const bool ENGINE_IS_WHITE = false;
+const bool ENGINE_IS_WHITE = true;
 
 /*
  * FEN strings for the initial board state.
  */
-const std::string ENGINE_BLACK_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
-const std::string ENGINE_WHITE_FEN = "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr w KQkq";
+const std::string INITIAL_FEN = ENGINE_IS_WHITE ? "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr w KQkq"
+                                                : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
 
 enum Piece
 {
