@@ -43,6 +43,8 @@ public:
     bool playerCastleKingside;
     bool playerCastleQueenside;
 
+    bool isEngineMove;
+
     // some extra information about the position
     Bitboard empties;
     Bitboard occupied;
@@ -174,6 +176,7 @@ public:
             }
         }
         updateBitboards();
+       isEngineMove = !isEngineMove;
     };
 
 private:

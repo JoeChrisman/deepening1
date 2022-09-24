@@ -17,6 +17,12 @@ Position::Position(const std::string& fen)
     int file = 0;
     for (char c : fen)
     {
+        // if we hit a space
+        if (c == ' ')
+        {
+            // we are done reading the piece positions
+            break;
+        }
         // if we read a digit, we want to skip over some squares
         if (c >= '0' && c <= '9')
         {
@@ -52,10 +58,14 @@ Position::Position(const std::string& fen)
         }
     }
 
-    engineCastleKingside = true;
-    engineCastleQueenside = true;
-    playerCastleKingside = true;
-    playerCastleQueenside = true;
+    std::string castlingRights = fen.substr(fen.size() - 4, 4);
+
+    engineCastleKingside = castlingRights.find(ENGINE_IS_WHITE ? 'K' : 'k') != std::string::npos;
+    engineCastleQueenside = castlingRights.find(ENGINE_IS_WHITE ? 'Q' : 'q') != std::string::npos;
+    playerCastleKingside = castlingRights.find(ENGINE_IS_WHITE ? 'k' : 'K') != std::string::npos;
+    playerCastleQueenside = castlingRights.find(ENGINE_IS_WHITE ? 'q' : 'Q') != std::string::npos;
+
+    isEngineMove = fen.substr(fen.size() - 6, 6).find(ENGINE_IS_WHITE ? 'w' : 'b') != std::string::npos;
 
     updateBitboards();
 }

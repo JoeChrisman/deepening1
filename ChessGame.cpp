@@ -16,7 +16,6 @@ ChessGame::ChessGame()
             &renderer);
 
     search = Search();
-    enginesTurn = ENGINE_IS_WHITE;
 
     draggingFrom = NULL_SQUARE;
     draggingTo = NULL_SQUARE;
@@ -284,7 +283,7 @@ void ChessGame::run()
                         dragging.bounds.y = event.button.y - SQUARE_SIZE / 2;
 
                         // generate legal moves
-                        if (enginesTurn)
+                        if (search.moveGen.position.isEngineMove)
                         {
                             search.moveGen.genEngineMoves();
                         }
@@ -320,7 +319,7 @@ void ChessGame::run()
                         clearHighlights();
                         // figure out what move the player made
                         Move move = getMove();
-                        if (enginesTurn)
+                        if (search.moveGen.position.isEngineMove)
                         {
                             search.moveGen.position.makeMove<true>(move);
                         }
@@ -331,8 +330,6 @@ void ChessGame::run()
                         }
                         board[draggingTo].isPreviousMove = true;
                         board[draggingFrom].isPreviousMove = true;
-
-                        enginesTurn = !enginesTurn;
                     }
                 }
 
