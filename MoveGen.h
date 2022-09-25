@@ -27,6 +27,9 @@ public:
 
 private:
 
+    template<bool isEngine>
+    void genPromotions(Square from, Square to, Piece captured);
+
     // squares where the king is safe to move to
     Bitboard safeSquares;
     template<bool isEngine>

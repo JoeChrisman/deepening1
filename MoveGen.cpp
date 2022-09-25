@@ -74,6 +74,22 @@ void MoveGen::genPlayerCaptures()
     genQueenMoves<false, false>();
 }
 
+// generate all four promotion types for a pawn
+template<bool isEngine>
+void MoveGen::genPromotions(Square from, Square to, Piece captured)
+{
+    for (int promotionType = KNIGHT_PROMOTION; promotionType <= QUEEN_PROMOTION; promotionType++)
+    {
+        moveList.push_back(Move{
+            (MoveType)promotionType,
+            from,
+            to,
+            isEngine ? ENGINE_PAWN : PLAYER_PAWN,
+            captured
+        });
+    }
+}
+
 /*
  * we need a way to ensure pieces do not break absolute pins.
  * an absolute pin is when a piece has restricted movement
@@ -266,12 +282,13 @@ void MoveGen::updateSafeSquares()
 }
 
 /*
- * use the magic bitboards defined in Magic.h to calculate a small hash.
+ * use the magic bitboards defined in Magics.h to calculate a small hash.
  * this hash is derived by bit-shifting the result of a multiplication
  * between the blocking pieces and a pre-calculated magic number.
  * we can then use this hash to lookup the correct attack set in an attack table.
  *
  * This function returns moves for a sliding piece given its square
+ * https://www.chessprogramming.org/Magic_Bitboards
  */
 template<bool isCardinal>
 Bitboard MoveGen::getSlidingMoves(Square from)
@@ -428,6 +445,12 @@ void MoveGen::genPawnMoves()
             Square to = popFirstPiece(pushed);
             Square from = isEngine ? north(to) : south(to);
 
+            // throw away moves that break a horizontal pin
+            if ((toBoard(from) & cardinalPins) && !(toBoard(to) & cardinalPins))
+            {
+                continue;
+            }
+
             moveList.push_back(Move{
                 NORMAL,
                 from,
@@ -442,6 +465,12 @@ void MoveGen::genPawnMoves()
             Square to = popFirstPiece(pushed2);
             Square from = isEngine ? north(north(to)) : south(south(to));
 
+            // throw away moves that break a horizontal pin
+            if ((toBoard(from) & cardinalPins) && !(toBoard(to) & cardinalPins))
+            {
+                continue;
+            }
+
             moveList.push_back(Move{
                 NORMAL,
                 from,
@@ -450,6 +479,33 @@ void MoveGen::genPawnMoves()
                 NONE
             });
         }
+    }
+
+    // push the pawns one square up
+    Bitboard pushPromoting = isEngine ? south(pawns) : north(pawns);
+    // isolate promotion squares
+    pushPromoting &= isEngine ? RANK_0 : RANK_7;
+    // make sure we cannot push onto another piece
+    pushPromoting &= ~position.occupied;
+    // throw away pawn push promotions that leave the king in check
+    pushPromoting &= resolverSquares;
+    // add promotion moves
+    while (pushPromoting)
+    {
+        Square to = popFirstPiece(pushPromoting);
+        Square from = isEngine ? north(to) : south(to);
+
+        // throw away moves that break a horizontal pin
+        if ((toBoard(from) & cardinalPins) && !(toBoard(to) & cardinalPins))
+        {
+            continue;
+        }
+        
+        genPromotions<isEngine>(
+                from,
+                to,
+                position.getPiece(to)
+        );
     }
 
     // don't generate capture moves for cardinal pinned pawns
@@ -469,6 +525,8 @@ void MoveGen::genPawnMoves()
             // we can still capture, but only along the pin
             captures &= ordinalPins;
         }
+        // figure out the promotions for this pawn
+        Bitboard promotions = captures & (isEngine ? RANK_7 : RANK_0);
         while (captures)
         {
             Square to = popFirstPiece(captures);
@@ -479,6 +537,16 @@ void MoveGen::genPawnMoves()
                 isEngine ? ENGINE_PAWN : PLAYER_PAWN,
                 position.getPiece(to)
             });
+        }
+        // generate all promotion types for this capture
+        while (promotions)
+        {
+            Square to = popFirstPiece(promotions);
+            genPromotions<isEngine>(
+                from,
+                to,
+                position.getPiece(to)
+            );
         }
     }
 }

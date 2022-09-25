@@ -13,6 +13,10 @@ enum MoveType
 {
     NORMAL,
     CASTLE,
+    KNIGHT_PROMOTION,
+    BISHOP_PROMOTION,
+    ROOK_PROMOTION,
+    QUEEN_PROMOTION
 };
 
 struct Move
@@ -64,8 +68,6 @@ public:
     {
         // remove the piece we are moving
         pieces[move.moved] ^= toBoard(move.from);
-        // put the piece on its new square
-        pieces[move.moved] |= toBoard(move.to);
 
         // if we captured something
         if (move.captured != NONE)
@@ -107,6 +109,37 @@ public:
                     }
                 }
             }
+        }
+
+        // if we need to make a promotion
+        if (move.type >= KNIGHT_PROMOTION)
+        {
+            // if we promoted to a knight
+            if (move.type == KNIGHT_PROMOTION)
+            {
+                pieces[isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT] |= toBoard(move.to);
+            }
+            // if we promoted to a bishop
+            else if (move.type == BISHOP_PROMOTION)
+            {
+                pieces[isEngine ? ENGINE_BISHOP: PLAYER_BISHOP] |= toBoard(move.to);
+            }
+            // if we promoted to a rook
+            else if (move.type == ROOK_PROMOTION)
+            {
+                pieces[isEngine ? ENGINE_ROOK: PLAYER_ROOK] |= toBoard(move.to);
+            }
+            // if we promoted to a queen
+            else if (move.type == QUEEN_PROMOTION)
+            {
+                pieces[isEngine ? ENGINE_QUEEN: PLAYER_QUEEN] |= toBoard(move.to);
+            }
+        }
+        // if we did not make a promotion
+        else
+        {
+            // put the piece on its new square
+            pieces[move.moved] |= toBoard(move.to);
         }
 
         // if we moved a rook
@@ -175,8 +208,9 @@ public:
                 }
             }
         }
+        // update additional position information
         updateBitboards();
-       isEngineMove = !isEngineMove;
+        isEngineMove = !isEngineMove;
     };
 
 private:

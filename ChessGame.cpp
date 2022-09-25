@@ -17,12 +17,29 @@ position(_position)
             &window,
             &renderer);
 
+    // we are not dragging anything at the moment
     draggingFrom = NULL_SQUARE;
     draggingTo = NULL_SQUARE;
     dragging.piece = NONE;
 
+    // create the graphics for the game
     createBoard();
     updateBoard();
+
+    // we are not deciding what piece to promote to
+    isPromoting = false;
+    // we have not decided what piece to promote to
+    promotionChoice = NONE;
+    // graphics that show the user some squares with promotion options
+    promotionOptions = std::vector<SquareUI>(4);
+    promotionOptions[0].bounds = board[C5].bounds;
+    promotionOptions[0].piece = PLAYER_KNIGHT;
+    promotionOptions[1].bounds = board[D5].bounds;
+    promotionOptions[1].piece = PLAYER_BISHOP;
+    promotionOptions[2].bounds = board[E5].bounds;
+    promotionOptions[2].piece = PLAYER_ROOK;
+    promotionOptions[3].bounds = board[F5].bounds;
+    promotionOptions[3].piece = PLAYER_QUEEN;
 
     run();
 }
@@ -34,6 +51,8 @@ ChessGame::~ChessGame()
     SDL_Quit();
 }
 
+// clear move option highlights.
+// this should be called when the user stops dragging a piece
 void ChessGame::clearMoveOptions()
 {
     for (SquareUI& square : board)
@@ -42,6 +61,8 @@ void ChessGame::clearMoveOptions()
     }
 }
 
+// clear all kinds of square highlighting.
+// this should be called before a move is made
 void ChessGame::clearHighlights()
 {
     clearMoveOptions();
@@ -52,6 +73,8 @@ void ChessGame::clearHighlights()
     }
 }
 
+// initialize the chessboard with 64 squares.
+// also initialize vector of 12 preloaded piece textures
 void ChessGame::createBoard()
 {
     board = std::vector<SquareUI>(64);
@@ -147,7 +170,7 @@ void ChessGame::render()
 
     SDL_RenderClear(renderer);
 
-    for (SquareUI square : board)
+    for (SquareUI& square : board)
     {
         /*
          * because of the way these if/else statements are laid out,
@@ -209,6 +232,13 @@ void ChessGame::render()
     SDL_RenderPresent(renderer);
 }
 
+/*
+ * get a Move struct for whatever move the player made
+ * TODO: we won't need to care about engine pieces here,
+ *  we are only going to use this for player pieces.
+ *  some of this code is temporary so the user can control
+ *  both sides of the board, for debugging purposes
+ */
 Move ChessGame::getMove()
 {
     assert(dragging.piece != NONE);
@@ -217,7 +247,7 @@ Move ChessGame::getMove()
     assert(draggingTo >= A1);
     assert(draggingTo <= H8);
 
-    MoveType type = NORMAL;
+    MoveType moveType = NORMAL;
 
     // if we are moving a king
     if (dragging.piece == ENGINE_KING || dragging.piece == PLAYER_KING)
@@ -229,21 +259,192 @@ Move ChessGame::getMove()
             if (abs(draggingTo - draggingFrom) > 1)
             {
                 // we castled
-                type = CASTLE;
+                moveType = CASTLE;
             }
         }
-
+    }
+    // if we are moving a pawn
+    if (dragging.piece == ENGINE_PAWN || dragging.piece == PLAYER_PAWN)
+    {
+        // if we are promoting a pawn
+        if (getRank(draggingTo) == 7 || getRank(draggingTo) == 0)
+        {
+            // if we have already made the choice
+            if (promotionChoice != NONE)
+            {
+                // figure out what we want to promote to
+                if (promotionChoice == PLAYER_KNIGHT)
+                {
+                    moveType = KNIGHT_PROMOTION;
+                }
+                else if (promotionChoice == PLAYER_BISHOP)
+                {
+                    moveType = BISHOP_PROMOTION;
+                }
+                else if (promotionChoice == PLAYER_ROOK)
+                {
+                    moveType = ROOK_PROMOTION;
+                }
+                else if (promotionChoice == PLAYER_QUEEN)
+                {
+                    moveType = QUEEN_PROMOTION;
+                }
+                promotionChoice = NONE;
+            }
+            // if we are promoting but we have not
+            // decided what piece to promote to yet
+            else
+            {
+                // remember the user has not decided what piece to promote to yet
+                isPromoting = true;
+                // clear the screen
+                SDL_RenderClear(renderer);
+                // draw a white background
+                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
+                SDL_Rect background = SDL_Rect{0, 0, WINDOW_SIZE, WINDOW_SIZE};
+                SDL_RenderFillRect(renderer, &background);
+                // render the promotion options
+                for (SquareUI& option : promotionOptions)
+                {
+                    SDL_RenderCopy(
+                            renderer,
+                            pieceTextures[option.piece],
+                            nullptr,
+                            &option.bounds
+                    );
+                }
+                /*
+                 * present the promotion options. they will stay on the screen
+                 * until the user clicks on one of the options. until then,
+                 * we don't render the chess board again
+                 */
+                SDL_RenderPresent(renderer);
+            }
+        }
     }
 
-    // this will have to be changed later, when we include special moves
-    // like castling, en passant, and promotions.
     return Move{
-        type,
+        moveType,
         draggingFrom,
         draggingTo,
         dragging.piece,
         position.getPiece(draggingTo)
     };
+}
+
+void ChessGame::onMousePressed(SDL_Point& mouse)
+{
+    // if we are promoting
+    if (isPromoting)
+    {
+        // go through the promotion options
+        for (SquareUI& option : promotionOptions)
+        {
+            // figure out what option the user chose
+            if (SDL_PointInRect(&mouse, &option.bounds))
+            {
+                // remember what the user chose
+                promotionChoice = option.piece;
+                // remember the user decided what to promote to
+                isPromoting = false;
+                break;
+            }
+        }
+    }
+    else
+    {
+        // figure out what square the user clicked on
+        Square clicked = getSquareHovering(mouse);
+
+        // if we clicked on a square
+        if (clicked != NULL_SQUARE)
+        {
+            SquareUI& square = board[clicked];
+            // if we clicked on a piece
+            if (square.piece != NONE)
+            {
+                // start dragging that piece
+                draggingFrom = clicked;
+                dragging.piece = square.piece;
+                dragging.bounds = square.bounds;
+                dragging.bounds.x = mouse.x - SQUARE_SIZE / 2;
+                dragging.bounds.y = mouse.y - SQUARE_SIZE / 2;
+
+                // generate legal moves for the dragging piece
+                if (position.isEngineMove)
+                {
+                    search.moveGen.genEngineMoves();
+                }
+                else
+                {
+                    search.moveGen.genPlayerMoves();
+                }
+                for (Move& move : search.moveGen.moveList)
+                {
+                    if (move.from == clicked)
+                    {
+                        // highlight move options
+                        board[move.to].isMoveOption = true;
+                    }
+                }
+
+                // remove the piece from its square
+                square.piece = NONE;
+            }
+        }
+    }
+}
+
+void ChessGame::onMouseReleased(SDL_Point& mouse)
+{
+    // if we are not deciding what piece to promote to
+    if (!isPromoting)
+    {
+        // if we are dragging something
+        if (dragging.piece != NONE)
+        {
+            // if we are not promoting
+            if (promotionChoice == NONE)
+            {
+                // figure out what square we want to drop the piece
+                draggingTo = getSquareHovering(mouse);
+            }
+            if (draggingTo != NULL_SQUARE && board[draggingTo].isMoveOption)
+            {
+                // figure out what move the player made
+                Move move = getMove();
+                if (isPromoting)
+                {
+                    return;
+                }
+                clearHighlights();
+
+                // make the move
+                if (position.isEngineMove)
+                {
+                    position.makeMove<true>(move);
+                }
+                else
+                {
+                    position.makeMove<false>(move);
+
+                }
+                // set previous move highlights
+                board[draggingTo].isPreviousMove = true;
+                board[draggingFrom].isPreviousMove = true;
+            }
+        }
+
+        // we released the mouse.
+        // forget whatever we were dragging
+        draggingFrom = NULL_SQUARE;
+        draggingTo = NULL_SQUARE;
+        dragging.piece = NONE;
+        clearMoveOptions();
+        // bring graphics up to date with the position.
+        // this moves the piece we were dragging back to the right square
+        updateBoard();
+    }
 }
 
 void ChessGame::run()
@@ -260,98 +461,40 @@ void ChessGame::run()
                 // get out of the event loop
                 break;
             }
+            // if the user clicked the mouse
             else if (event.type == SDL_MOUSEBUTTONDOWN)
             {
-                assert(dragging.piece == NONE);
-                assert(draggingFrom == NULL_SQUARE);
-                assert(draggingTo == NULL_SQUARE);
-
-                Square clicked = getSquareHovering(
-                        SDL_Point{
-                            event.button.x,
-                            event.button.y});
-
-                if (clicked != NULL_SQUARE)
-                {
-                    SquareUI& square = board[clicked];
-                    if (square.piece != NONE)
-                    {
-                        dragging.piece = square.piece;
-                        draggingFrom = clicked;
-                        dragging.bounds = square.bounds;
-                        dragging.bounds.x = event.button.x - SQUARE_SIZE / 2;
-                        dragging.bounds.y = event.button.y - SQUARE_SIZE / 2;
-
-                        // generate legal moves
-                        if (position.isEngineMove)
-                        {
-                            search.moveGen.genEngineMoves();
-                        }
-                        else
-                        {
-                            search.moveGen.genPlayerMoves();
-                        }
-                        for (Move& move : search.moveGen.moveList)
-                        {
-                            if (move.from == clicked)
-                            {
-                                // highlight move options
-                                board[move.to].isMoveOption = true;
-                            }
-                        }
-
-                        // remove the piece from its square
-                        square.piece = NONE;
-                    }
-                }
+                SDL_Point mouse = SDL_Point{
+                    event.button.x,
+                    event.button.y
+                };
+                onMousePressed(mouse);
             }
+            // if the user released the mouse
             else if (event.type == SDL_MOUSEBUTTONUP)
             {
-                if (dragging.piece != NONE)
-                {
-                    draggingTo = getSquareHovering(SDL_Point{
+                SDL_Point mouse = SDL_Point{
                         event.button.x,
                         event.button.y
-                    });
-
-                    if (draggingTo != NULL_SQUARE && board[draggingTo].isMoveOption)
-                    {
-                        clearHighlights();
-                        // figure out what move the player made
-                        Move move = getMove();
-                        if (position.isEngineMove)
-                        {
-                            position.makeMove<true>(move);
-                        }
-                        else
-                        {
-                            position.makeMove<false>(move);
-
-                        }
-                        board[draggingTo].isPreviousMove = true;
-                        board[draggingFrom].isPreviousMove = true;
-                    }
-                }
-
-                draggingFrom = NULL_SQUARE;
-                draggingTo = NULL_SQUARE;
-                dragging.piece = NONE;
-                clearMoveOptions();
-
-                // bring graphics up to date with the position
-                updateBoard();
-
+                };
+                onMouseReleased(mouse);
             }
+            // if the user moved the mouse
             else if (event.type == SDL_MOUSEMOTION)
             {
+                // if we are dragging a piece
                 if (dragging.piece != NONE)
                 {
+                    // move whatever piece we are dragging to the mouse
                     dragging.bounds.x = event.motion.x - SQUARE_SIZE / 2;
                     dragging.bounds.y = event.motion.y - SQUARE_SIZE / 2;
                 }
             }
             // render the player's move
-            render();
+            if (!isPromoting)
+            {
+                render();
+            }
             /*
             if (enginesTurn)
             {

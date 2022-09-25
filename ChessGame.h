@@ -37,10 +37,16 @@ private:
     std::vector<SquareUI> board;
     // 12 preloaded piece textures plus one nullptr for a NONE piece
     std::vector<SDL_Texture*> pieceTextures;
+
     // the piece the user is dragging
     SquareUI dragging;
     Square draggingFrom;
     Square draggingTo;
+
+    // if true, we want to display promotion choices
+    bool isPromoting;
+    std::vector<SquareUI> promotionOptions;
+    Piece promotionChoice;
 
     // initialize graphical board with square bounds and colors
     void createBoard();
@@ -67,6 +73,9 @@ private:
     void render();
     // event loop
     void run();
+
+    void onMousePressed(SDL_Point& mouse);
+    void onMouseReleased(SDL_Point& mouse);
 };
 
 
