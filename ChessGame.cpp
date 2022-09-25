@@ -419,19 +419,31 @@ void ChessGame::onMouseReleased(SDL_Point& mouse)
                 }
                 clearHighlights();
 
+                // to remember what pieces are checking the king, if any
+                Bitboard checkers = EMPTY_BITBOARD;
                 // make the move
                 if (position.isEngineMove)
                 {
                     position.makeMove<true>(move);
+                    checkers = search.moveGen.getCheckers<false>();
                 }
                 else
                 {
                     position.makeMove<false>(move);
-
+                    checkers = search.moveGen.getCheckers<true>();
                 }
                 // set previous move highlights
                 board[draggingTo].isPreviousMove = true;
                 board[draggingFrom].isPreviousMove = true;
+
+                // if we are in check, highlight our king
+                board[toSquare(position.pieces[position.isEngineMove ? ENGINE_KING : PLAYER_KING])].isChecking = checkers;
+                // highlight the pieces checking our king
+                while (checkers)
+                {
+                    board[popFirstPiece(checkers)].isChecking = true;
+                }
+
             }
         }
 

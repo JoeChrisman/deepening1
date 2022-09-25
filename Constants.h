@@ -36,7 +36,7 @@ enum Piece
 
 const int DARK_SQUARE_COLOR = 0x0;
 const int LIGHT_SQUARE_COLOR = 0xffffff;
-const int CHECKING_SQUARE_COLOR = 0x880808;
+const int CHECKING_SQUARE_COLOR = 0xc41e3a;
 const int MOVE_OPTION_COLOR = 0x89cff0;
 const int PREVIOUS_MOVE_COLOR = 0x50C878;
 

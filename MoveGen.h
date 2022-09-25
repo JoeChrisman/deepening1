@@ -11,7 +11,6 @@ class MoveGen
 {
 
 public:
-
     MoveGen(Position& _position);
 
     Position& position;
@@ -24,6 +23,34 @@ public:
     // generate only captures - for use in a quiescence search
     void genEngineCaptures();
     void genPlayerCaptures();
+
+
+    /*
+     * get a bitboard of pieces that are attacking the king.
+     * used in ChessGame.cpp to highlight checking pieces
+     */
+    template<bool isEngine>
+    Bitboard getCheckers()
+    {
+        Square king = toSquare(position.pieces[isEngine ? ENGINE_KING : PLAYER_KING]);
+        Bitboard checkers = EMPTY_BITBOARD;
+
+        Bitboard knights = KNIGHT_MOVES[king];
+        knights &= position.pieces[isEngine ? PLAYER_KNIGHT : ENGINE_KNIGHT];
+
+        Bitboard pawns = isEngine ? PLAYER_PAWN_CAPTURES[king] : ENGINE_PAWN_CAPTURES[king];
+        pawns &= position.pieces[isEngine ? PLAYER_PAWN : ENGINE_PAWN];
+
+        Bitboard bishops = getSlidingMoves<false>(king);
+        Bitboard rooks = getSlidingMoves<true>(king);
+        Bitboard queens = (bishops | rooks);
+
+        queens &= position.pieces[isEngine ? PLAYER_QUEEN : ENGINE_QUEEN];
+        bishops &= position.pieces[isEngine ? PLAYER_BISHOP : ENGINE_BISHOP];
+        rooks &= position.pieces[isEngine ? PLAYER_ROOK : ENGINE_ROOK];
+
+        return pawns | knights | bishops | rooks | queens;
+    }
 
 private:
 
