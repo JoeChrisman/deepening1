@@ -33,12 +33,11 @@ public:
     Bitboard getCheckers()
     {
         Square king = toSquare(position.pieces[isEngine ? ENGINE_KING : PLAYER_KING]);
-        Bitboard checkers = EMPTY_BITBOARD;
 
         Bitboard knights = KNIGHT_MOVES[king];
         knights &= position.pieces[isEngine ? PLAYER_KNIGHT : ENGINE_KNIGHT];
 
-        Bitboard pawns = isEngine ? PLAYER_PAWN_CAPTURES[king] : ENGINE_PAWN_CAPTURES[king];
+        Bitboard pawns = isEngine ? ENGINE_PAWN_CAPTURES[king] : PLAYER_PAWN_CAPTURES[king];
         pawns &= position.pieces[isEngine ? PLAYER_PAWN : ENGINE_PAWN];
 
         Bitboard bishops = getSlidingMoves<false>(king);

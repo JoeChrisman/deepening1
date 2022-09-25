@@ -34,10 +34,10 @@ enum Piece
     NONE
 };
 
-const int DARK_SQUARE_COLOR = 0x0;
-const int LIGHT_SQUARE_COLOR = 0xffffff;
-const int CHECKING_SQUARE_COLOR = 0xc41e3a;
-const int MOVE_OPTION_COLOR = 0x89cff0;
-const int PREVIOUS_MOVE_COLOR = 0x50C878;
+const int DARK_SQUARE_COLOR = 0x222222;
+const int LIGHT_SQUARE_COLOR = 0x777777;
+const int CHECKING_SQUARE_COLOR = 0xff3131;
+const int MOVE_OPTION_COLOR = 0x40e0d0;
+const int PREVIOUS_MOVE_COLOR = 0x99ff99;
 
 #endif //DEEPENING1_CONSTANTS_H
