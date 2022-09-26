@@ -14,8 +14,8 @@ const bool ENGINE_IS_WHITE = true;
 /*
  * FEN strings for the initial board state.
  */
-const std::string INITIAL_FEN = ENGINE_IS_WHITE ? "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr w KQkq"
-                                                : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
+const std::string INITIAL_FEN = ENGINE_IS_WHITE ? "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr w KQkq -"
+                                                : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
 
 enum Piece
 {

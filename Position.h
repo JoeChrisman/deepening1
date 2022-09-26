@@ -7,12 +7,14 @@
 
 #include <vector>
 #include <string>
+#include <sstream>
 #include "Bitboards.h"
 
 enum MoveType
 {
     NORMAL,
     CASTLE,
+    EN_PASSANT,
     KNIGHT_PROMOTION,
     BISHOP_PROMOTION,
     ROOK_PROMOTION,
@@ -33,7 +35,11 @@ class Position
 
 public:
     // create a chess game from a FEN string
-    Position(const std::string& fen);
+    Position(std::string fen);
+
+    std::string toNotation(Square square);
+    Square toSquare(std::string notation);
+
     Piece getPiece(Square square);
 
     /*
@@ -41,6 +47,9 @@ public:
      * the vector is indexed using the Piece enumeration in Constants.h
      */
     std::vector<Bitboard> pieces;
+
+    // the bitboard of the capture square of an available en passant move
+    Bitboard enPassantCapture;
 
     bool engineCastleKingside;
     bool engineCastleQueenside;
@@ -72,8 +81,18 @@ public:
         // if we captured something
         if (move.captured != NONE)
         {
-            // remove the piece we captured
-            pieces[move.captured] ^= toBoard(move.to);
+            // if we captured en-passant
+            if (move.type == EN_PASSANT)
+            {
+                // remove the pawn we captured
+                pieces[isEngine ? PLAYER_PAWN : ENGINE_PAWN] ^= isEngine ? north(enPassantCapture)
+                                                                         : south(enPassantCapture);
+            }
+            else
+            {
+                // remove the piece we captured
+                pieces[move.captured] ^= toBoard(move.to);
+            }
 
             // if we captured a rook
             if (move.captured == (isEngine ? PLAYER_ROOK : ENGINE_ROOK))
@@ -108,6 +127,18 @@ public:
                         (ENGINE_IS_WHITE ? engineCastleKingside : engineCastleQueenside) = false;
                     }
                 }
+            }
+        }
+        // reset en passant capture because it is now illegal if we did not just play it
+        enPassantCapture = EMPTY_BITBOARD;
+
+        // if we moved a pawn without a capture
+        if (move.moved == PLAYER_PAWN || move.moved == ENGINE_PAWN && move.captured == NONE)
+        {
+            // if we made a double push pawn move
+            if (abs(move.to - move.from) > 8)
+            {
+                enPassantCapture = toBoard(isEngine ? north(move.to) : south(move.to));
             }
         }
 
@@ -214,6 +245,7 @@ public:
     };
 
 private:
+    void readFen(const std::string& fen);
 
 
 };

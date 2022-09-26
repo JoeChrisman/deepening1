@@ -24,10 +24,9 @@ public:
     void genEngineCaptures();
     void genPlayerCaptures();
 
-
     /*
      * get a bitboard of pieces that are attacking the king.
-     * used in ChessGame.cpp to highlight checking pieces
+     * used in ChessGame.cpp to highlight the checking pieces
      */
     template<bool isEngine>
     Bitboard getCheckers()

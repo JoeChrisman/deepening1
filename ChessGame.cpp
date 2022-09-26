@@ -248,6 +248,7 @@ Move ChessGame::getMove()
     assert(draggingTo <= H8);
 
     MoveType moveType = NORMAL;
+    Piece captured = position.getPiece(draggingTo);
 
     // if we are moving a king
     if (dragging.piece == ENGINE_KING || dragging.piece == PLAYER_KING)
@@ -266,6 +267,12 @@ Move ChessGame::getMove()
     // if we are moving a pawn
     if (dragging.piece == ENGINE_PAWN || dragging.piece == PLAYER_PAWN)
     {
+        // if we are capturing en passant
+        if (getFile(draggingTo) != getFile(draggingFrom) && board[draggingTo].piece == NONE)
+        {
+            moveType = EN_PASSANT;
+            captured = (dragging.piece == ENGINE_PAWN) ? PLAYER_PAWN : ENGINE_PAWN;
+        }
         // if we are promoting a pawn
         if (getRank(draggingTo) == 7 || getRank(draggingTo) == 0)
         {
@@ -328,26 +335,26 @@ Move ChessGame::getMove()
         draggingFrom,
         draggingTo,
         dragging.piece,
-        position.getPiece(draggingTo)
+        captured
     };
 }
 
 void ChessGame::onMousePressed(SDL_Point& mouse)
 {
-    // if we are promoting
+    // if we are deciding what piece to promote to
     if (isPromoting)
     {
         // go through the promotion options
         for (SquareUI& option : promotionOptions)
         {
-            // figure out what option the user chose
+            // figure out what option the user clicked on
             if (SDL_PointInRect(&mouse, &option.bounds))
             {
                 // remember what the user chose
                 promotionChoice = option.piece;
                 // remember the user decided what to promote to
                 isPromoting = false;
-                break;
+                return;
             }
         }
     }
@@ -413,6 +420,8 @@ void ChessGame::onMouseReleased(SDL_Point& mouse)
             {
                 // figure out what move the player made
                 Move move = getMove();
+                // if the move we just made was a promotion,
+                // we need the user to decide what piece to promote to
                 if (isPromoting)
                 {
                     return;
