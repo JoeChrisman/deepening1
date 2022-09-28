@@ -58,6 +58,14 @@ public:
 
     bool isEngineMove;
 
+    // the number of half moves have been played since the last reversible move.
+    // used for enforcing the draw by fifty move rule
+    int halfMoveClock;
+
+    // the number of full moves (ex. e4 e5) have been played so far.
+    // not sure how it will ever be used. But it is a part of FEN specification
+    int fullMoves;
+
     // some extra information about the position
     Bitboard empties;
     Bitboard occupied;

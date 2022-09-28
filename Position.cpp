@@ -93,9 +93,8 @@ Piece Position::getPiece(Square square)
 }
 
 /*
- * fill the board according to an FEN string.
- * this works, but for now this implementation is not yet fully FEN compliant.
- * this is a simplified version because we don't care about half-move and full-move clock
+ * initialize the position according to a FEN string.
+ * This makes automated testing possible.
  * https://www.chessprogramming.org/Forsyth-Edwards_Notation
  */
 void Position::readFen(const std::string& fen)
@@ -105,8 +104,8 @@ void Position::readFen(const std::string& fen)
         "", // 2) side to move
         "", // 3) castling ability
         "", // 4) en passant capture square
-        "", // TODO 5) half-move clock
-        ""  // TODO 6) full-move clock
+        "", // 5) half move clock
+        ""  // 6) full move clock
     };
     // parse the fields
     std::stringstream stream(fen);
@@ -163,4 +162,8 @@ void Position::readFen(const std::string& fen)
 
     Square enPassant = toSquare(fields[3]);
     enPassantCapture = (enPassant != NULL_SQUARE) ? toBoard(enPassant) : EMPTY_BITBOARD;
+
+    // if the half-move or full-move clocks are not given, atoi() will still be zero
+    halfMoveClock = atoi(fields[4].c_str());
+    fullMoves = atoi(fields[5].c_str());
 }
