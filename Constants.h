@@ -6,33 +6,8 @@
 #define DEEPENING1_CONSTANTS_H
 
 const int WINDOW_SIZE = 800;
-const int SQUARES_WIDE = 8;
-const int SQUARE_SIZE = WINDOW_SIZE / SQUARES_WIDE;
-
+const int SQUARE_SIZE = WINDOW_SIZE / 8;
 const bool ENGINE_IS_WHITE = false;
-
-/*
- * FEN strings for the initial board state.
- */
-const std::string INITIAL_FEN = ENGINE_IS_WHITE ? "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr w KQkq -"
-                                                : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
-
-enum Piece
-{
-    PLAYER_PAWN,
-    PLAYER_KNIGHT,
-    PLAYER_BISHOP,
-    PLAYER_ROOK,
-    PLAYER_QUEEN,
-    PLAYER_KING,
-    ENGINE_PAWN,
-    ENGINE_KNIGHT,
-    ENGINE_BISHOP,
-    ENGINE_ROOK,
-    ENGINE_QUEEN,
-    ENGINE_KING,
-    NONE
-};
 
 const int DARK_SQUARE_COLOR = 0x222222;
 const int LIGHT_SQUARE_COLOR = 0x777777;

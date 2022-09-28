@@ -6,41 +6,15 @@
 #define DEEPENING1_POSITION_H
 
 #include <vector>
-#include <string>
 #include <sstream>
-#include "Bitboards.h"
-
-enum MoveType
-{
-    NORMAL,
-    CASTLE,
-    EN_PASSANT,
-    KNIGHT_PROMOTION,
-    BISHOP_PROMOTION,
-    ROOK_PROMOTION,
-    QUEEN_PROMOTION
-};
-
-struct Move
-{
-    MoveType type;
-    Square from;
-    Square to;
-    Piece moved;
-    Piece captured;
-};
+#include "Squares.h"
 
 class Position
 {
-
 public:
+
     // create a chess game from a FEN string
     Position(std::string fen);
-
-    std::string toNotation(Square square);
-    Square toSquare(std::string notation);
-
-    Piece getPiece(Square square);
 
     /*
      * a vector of bitboards of pieces. there is one bitboard for each piece type.
@@ -77,18 +51,53 @@ public:
     void updateBitboards();
 
     /*
+     * get a piece type given a square
+     * if the square does not have a piece, NONE will be returned.
+     */
+    PieceType getPiece(Square square);
+
+    /*
+     * get a piece type given a square and piece side
+     * if the square does not have a piece, NONE will be returned.
+     */
+    template<bool isEngine>
+    PieceType getPiece(Square square)
+    {
+        Bitboard board = toBoard(square);
+
+        for (int piece = isEngine ? ENGINE_PAWN : PLAYER_PAWN;
+             piece <= (isEngine ? ENGINE_KING : PLAYER_KING);
+             piece++)
+        {
+            if (pieces[piece] & board)
+            {
+                return (PieceType)piece;
+            }
+        }
+        return NONE;
+    }
+
+    /*
      * Make a move in the position.
-     * manipulate the bitboards to make whatever move we want
+     * manipulate the bitboards to make whatever move we want,
+     * based on the given move struct. this function does not
+     * increment the full move count or half move clock, but it does
+     * reset the half move clock when an irreversible move is made
      */
     template<bool isEngine>
     void makeMove(Move& move)
     {
+        Bitboard to = toBoard(move.to);
+        Bitboard from = toBoard(move.from);
+
         // remove the piece we are moving
-        pieces[move.moved] ^= toBoard(move.from);
+        pieces[move.moved] ^= from;
 
         // if we captured something
         if (move.captured != NONE)
         {
+            // captures are irreversible moves
+            halfMoveClock = 0;
             // if we captured en-passant
             if (move.type == EN_PASSANT)
             {
@@ -99,7 +108,7 @@ public:
             else
             {
                 // remove the piece we captured
-                pieces[move.captured] ^= toBoard(move.to);
+                pieces[move.captured] ^= to;
             }
 
             // if we captured a rook
@@ -141,47 +150,50 @@ public:
         enPassantCapture = EMPTY_BITBOARD;
 
         // if we moved a pawn without a capture
-        if ((move.moved == PLAYER_PAWN || move.moved == ENGINE_PAWN) && move.captured == NONE)
+        if ((move.moved == (isEngine ? ENGINE_PAWN : PLAYER_PAWN)) && move.captured == NONE)
         {
+            // pawn moves are irreversible moves
+            halfMoveClock = 0;
             // if we made a double push pawn move
             if (abs(move.to - move.from) > 8)
             {
                 // remember this double push pawn move enables en passant
-                enPassantCapture = toBoard(isEngine ? north(move.to) : south(move.to));
+                enPassantCapture = isEngine ? north(to) : south(to);
             }
         }
 
         // if we need to make a promotion
         if (move.type >= KNIGHT_PROMOTION)
         {
-            // if we promoted to a knight
-            if (move.type == KNIGHT_PROMOTION)
+            // promotions are irreversible moves
+            halfMoveClock = 0;
+            // if we promoted to a queen
+            if (move.type == QUEEN_PROMOTION)
             {
-                pieces[isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT] |= toBoard(move.to);
+                pieces[isEngine ? ENGINE_QUEEN: PLAYER_QUEEN] ^= to;
             }
-            // if we promoted to a bishop
-            else if (move.type == BISHOP_PROMOTION)
+            // if we promoted to a knight
+            else if (move.type == KNIGHT_PROMOTION)
             {
-                pieces[isEngine ? ENGINE_BISHOP: PLAYER_BISHOP] |= toBoard(move.to);
+                pieces[isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT] ^= to;
             }
             // if we promoted to a rook
             else if (move.type == ROOK_PROMOTION)
             {
-                pieces[isEngine ? ENGINE_ROOK: PLAYER_ROOK] |= toBoard(move.to);
+                pieces[isEngine ? ENGINE_ROOK: PLAYER_ROOK] ^= to;
             }
-            // if we promoted to a queen
-            else if (move.type == QUEEN_PROMOTION)
+            // if we promoted to a bishop
+            else if (move.type == BISHOP_PROMOTION)
             {
-                pieces[isEngine ? ENGINE_QUEEN: PLAYER_QUEEN] |= toBoard(move.to);
+                pieces[isEngine ? ENGINE_BISHOP: PLAYER_BISHOP] ^= to;
             }
         }
         // if we did not make a promotion
         else
         {
             // put the piece we are moving on its new square
-            pieces[move.moved] ^= toBoard(move.to);
+            pieces[move.moved] ^= to;
         }
-
         // if we moved a rook
         if (move.moved == (isEngine ? ENGINE_ROOK : PLAYER_ROOK))
         {
@@ -235,7 +247,7 @@ public:
                     // remove either the right or left rook
                     rooks ^= toBoard(isRightCastle ? H8 : A8);
                     // place a rook to the right or left of the king
-                    rooks ^= toBoard(isRightCastle ? west(move.to) : east(move.to));
+                    rooks ^= isRightCastle ? west(to) : east(to);
                 }
                 else
                 {
@@ -243,7 +255,7 @@ public:
                     // remove either the right or left rook
                     rooks ^= toBoard(isRightCastle ? H1 : A1);
                     // place a rook to the right or left of the king
-                    rooks ^= toBoard(isRightCastle ? west(move.to) : east(move.to));
+                    rooks ^= isRightCastle ? west(to) : east(to);
                 }
             }
         }
@@ -257,85 +269,84 @@ public:
      * to the exact way it was before the given move was made, except for these things:
      * 1) castling rights
      * 2) en passant capture square
-     * It does not undo these things because:
-     * 1) there is no way to know if the previous move caused a loss of castling right
-     * 2) there is no way to know what the en passant square should become, if we were to undo
-     * because of these reasons, the en passant capture square and castling rights will be stored
-     * on the call stack during the search. Hopefully, doing unmake() should still be faster than
-     * copying the entire position onto the stack during the search.
-     * TODO: test performance of make-search-unmake vs copy-make-search-restore
+     * 3) half move clock for 50 move rule
+     * these things will have to be stored on the call stack during the search
      */
     template<bool isEngine>
     void unMakeMove(Move& move)
     {
+        Bitboard from = toBoard(move.from);
+        Bitboard to = toBoard(move.to);
+
         // add the piece back to where it came from
-        pieces[move.moved] ^= toBoard(move.from);
+        pieces[move.moved] ^= from;
 
         // if we want to undo an en-passant capture
         if (move.type == EN_PASSANT)
         {
             // restore the captured pawn
-            pieces[move.captured] ^= toBoard(isEngine ? north(move.to) : south(move.to));
+            pieces[move.captured] ^= isEngine ? north(to) : south(to);
         }
         // if we want to undo a normal capture
         else if (move.captured != NONE)
         {
             // restore captured piece
-            pieces[move.captured] ^= toBoard(move.to);
+            pieces[move.captured] ^= to;
         }
         // if we want to undo a promotion
         if (move.type >= KNIGHT_PROMOTION)
         {
-            // remove our promoted knight
-            if (move.type == KNIGHT_PROMOTION)
+            // remove our promoted queen
+            if (move.type == QUEEN_PROMOTION)
             {
-                pieces[isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT] ^= toBoard(move.to);
+                pieces[isEngine ? ENGINE_QUEEN : PLAYER_QUEEN] ^= to;
             }
-            // remove our promoted bishop
-            else if (move.type == BISHOP_PROMOTION)
+            // remove our promoted knight
+            else if (move.type == KNIGHT_PROMOTION)
             {
-                pieces[isEngine ? ENGINE_BISHOP : PLAYER_BISHOP] ^= toBoard(move.to);
+                pieces[isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT] ^= to;
             }
             // remove our promoted rook
             else if (move.type == ROOK_PROMOTION)
             {
-                pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK] ^= toBoard(move.to);
+                pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK] ^= to;
             }
-            // remove our promoted queen
-            else if (move.type == QUEEN_PROMOTION)
+            // remove our promoted bishop
+            else if (move.type == BISHOP_PROMOTION)
             {
-                pieces[isEngine ? ENGINE_QUEEN : PLAYER_QUEEN] ^= toBoard(move.to);
+                pieces[isEngine ? ENGINE_BISHOP : PLAYER_BISHOP] ^= to;
             }
         }
         // if we are not undoing promotion
         else
         {
             // remove the piece we moved from where it came from
-            pieces[move.moved] ^= toBoard(move.to);
-        }
-        // if we want to undo castling
-        if (move.type == CASTLE)
-        {
-            // we already moved the king back to where it came from.
-            // we just have to un-castle the castled rook
-            if (isEngine)
+            pieces[move.moved] ^= to;
+            // if we want to undo castling
+            if (move.type == CASTLE)
             {
-                bool wasRightCastle = move.to == F8 || move.to == G8;
-                // remove the rook from next to the king
-                pieces[ENGINE_ROOK] ^= toBoard(wasRightCastle ? west(move.to) : east(move.to));
-                // put the rook back to where it came from
-                pieces[ENGINE_ROOK] ^= toBoard(wasRightCastle ? H8 : A8);
-            }
-            else
-            {
-                bool wasRightCastle = move.to == F1 || move.to == G1;
-                // remove the rook from next to the king
-                pieces[PLAYER_ROOK] ^= toBoard(wasRightCastle ? west(move.to) : east(move.to));
-                // put the rook back to where it came from
-                pieces[PLAYER_ROOK] ^= toBoard(wasRightCastle ? H1 : A1);
+                // we already moved the king back to where it came from.
+                // we just have to un-castle the castled rook
+                if (isEngine)
+                {
+                    bool wasRightCastle = move.to == F8 || move.to == G8;
+                    // remove the rook from next to the king
+                    pieces[ENGINE_ROOK] ^= wasRightCastle ? west(to) : east(to);
+                    // put the rook back to where it came from
+                    pieces[ENGINE_ROOK] ^= toBoard(wasRightCastle ? H8 : A8);
+                }
+                else
+                {
+                    bool wasRightCastle = move.to == F1 || move.to == G1;
+                    // remove the rook from next to the king
+                    pieces[PLAYER_ROOK] ^= wasRightCastle ? west(to) : east(to);
+                    // put the rook back to where it came from
+                    pieces[PLAYER_ROOK] ^= toBoard(wasRightCastle ? H1 : A1);
 
+                }
             }
         }
+
         // update additional position information
         updateBitboards();
         isEngineMove = !isEngineMove;

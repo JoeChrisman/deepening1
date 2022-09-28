@@ -15,28 +15,6 @@ Position::Position(std::string fen)
     updateBitboards();
 }
 
-std::string Position::toNotation(Square square)
-{
-    std::string notation = "--";
-    int rank = getRank(square);
-    int file = getFile(square);
-    notation[0] = 'a' + (ENGINE_IS_WHITE ? 8 - file : file);
-    notation[1] = '1' + (ENGINE_IS_WHITE ? 8 - rank : rank);
-    return notation;
-}
-
-Square Position::toSquare(std::string notation)
-{
-    if (notation[0] >= 'a' && notation[0] <= 'h' &&
-        notation[1] >= '1' && notation[1] <= '8')
-    {
-        int file = (ENGINE_IS_WHITE ? 'h' - notation[0] : notation[0] - 'a');
-        int rank = (ENGINE_IS_WHITE ? '8' - notation[1] : notation[1] - '1');
-        return getSquare(rank, file);
-    }
-    return NULL_SQUARE;
-}
-
 void Position::updateBitboards()
 {
 
@@ -62,31 +40,17 @@ void Position::updateBitboards()
 
     playerMovable = enginePieces | empties;
     engineMovable = playerPieces | empties;
-
 }
 
-
-/*
- * get a piece type for a given square using the bitboards.
- * there is no efficient way to do this, we will check every bitboard worst case.
- * if there is no piece, this function returns the NONE piece.
- *
- * TODO: this function will have to be faster. during move generation,
- *  we need to ask ourselves: "What piece did I just capture?".
- *  maybe find a way to get rid of the some branching (the if() and the piece<NONE)
- *  maybe store pieces in a traditional 8x8 array, alongside the bitboard representation?
- */
-Piece Position::getPiece(Square square)
+PieceType Position::getPiece(Square square)
 {
-    assert(square >= A1);
-    assert(square <= H8);
-
     Bitboard board = toBoard(square);
+
     for (int piece = PLAYER_PAWN; piece < NONE; piece++)
     {
         if (pieces[piece] & board)
         {
-            return (Piece)piece;
+            return (PieceType)piece;
         }
     }
     return NONE;
@@ -160,7 +124,7 @@ void Position::readFen(const std::string& fen)
     playerCastleKingside = fields[2].find(ENGINE_IS_WHITE ? 'k' : 'K') != std::string::npos;
     playerCastleQueenside = fields[2].find(ENGINE_IS_WHITE ? 'q' : 'Q') != std::string::npos;
 
-    Square enPassant = toSquare(fields[3]);
+    Square enPassant = squares::toSquare(fields[3]);
     enPassantCapture = (enPassant != NULL_SQUARE) ? toBoard(enPassant) : EMPTY_BITBOARD;
 
     // if the half-move or full-move clocks are not given, atoi() will still be zero

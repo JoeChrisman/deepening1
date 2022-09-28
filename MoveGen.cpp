@@ -75,7 +75,7 @@ void MoveGen::genPlayerCaptures()
 
 // generate all four promotion types for a pawn
 template<bool isEngine>
-void MoveGen::genPromotions(Square from, Square to, Piece captured)
+void MoveGen::genPromotions(Square from, Square to, PieceType captured)
 {
     for (int promotionType = KNIGHT_PROMOTION; promotionType <= QUEEN_PROMOTION; promotionType++)
     {
@@ -303,6 +303,13 @@ Bitboard MoveGen::getSlidingMoves(Square from)
         [(ORDINAL_BLOCKERS[from] & position.occupied) * ORDINAL_MAGICS[from] >> 55];
 }
 
+/*
+ * knights are pretty easy. they just leap from one square to another,
+ * so they can be implemented with a single bitboard in an array lookup.
+ * additionally, we need to make sure we don't move onto our own pieces,
+ * leave our king in check, or break any pin. If a knight is pinned,
+ * it has no legal moves at all. it is the only piece with that property
+ */
 template<bool isEngine, bool quiets>
 void MoveGen::genKnightMoves()
 {
@@ -313,8 +320,9 @@ void MoveGen::genKnightMoves()
     while (knights)
     {
         Square from = popFirstPiece(knights);
-        Bitboard moves = KNIGHT_MOVES[from] & resolverSquares;
-
+        Bitboard moves = KNIGHT_MOVES[from];
+        // throw away moves that leave the king in check
+        moves &= resolverSquares;
         // moves and captures
         if (quiets)
         {
@@ -325,7 +333,7 @@ void MoveGen::genKnightMoves()
         {
             moves &= (isEngine ? position.playerPieces : position.enginePieces);
         }
-
+        // add knight moves to the move list
         while (moves)
         {
             Square to = popFirstPiece(moves);
@@ -334,25 +342,38 @@ void MoveGen::genKnightMoves()
                 from,
                 to,
                 isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT,
-                position.getPiece(to)
+                position.getPiece<!isEngine>(to)
             });
         }
     }
 }
 
+/*
+ * king moves are a little complicated. The way they move is simple,
+ * and their movement can be implemented by a single array lookup,
+ * but we additionally have to validate castling moves.
+ * A king can castle if:
+ * 1) there are no pieces in between the king and the rook
+ * 2) there are no attacked squares along the king's path during castling
+ * 3) the king is not attacked by an enemy piece
+ * 4) the king has not lost the right to castle
+ *
+ * "along the king's path" is not necessary the same as "in between the rook and the king".
+ * they mean the same thing when we castle kingside. but not when we castle queenside
+ */
 template<bool isEngine, bool quiets>
 void MoveGen::genKingMoves()
 {
     Square from = toSquare(position.pieces[isEngine ? ENGINE_KING : PLAYER_KING]);
     Bitboard moves = KING_MOVES[from];
-
     // don't let the king walk onto attacked squares
     moves &= safeSquares;
+    // don't let the king capture his own pieces
+    moves &= (isEngine ? position.engineMovable : position.playerMovable);
 
-    // all moves
+    // if we want to generate all moves
     if (quiets)
     {
-        moves &= (isEngine ? position.engineMovable : position.playerMovable);
         Bitboard king = toBoard(from);
         // if the king is not in check, we might be able to castle
         if (king & safeSquares)
@@ -401,7 +422,7 @@ void MoveGen::genKingMoves()
     {
         moves &= (isEngine ? position.playerPieces : position.enginePieces);
     }
-
+    // add king moves, not including castling moves
     while (moves)
     {
         Square to = popFirstPiece(moves);
@@ -410,11 +431,20 @@ void MoveGen::genKingMoves()
             from,
             to,
             isEngine ? ENGINE_KING : PLAYER_KING,
-            position.getPiece(to)
+            position.getPiece<!isEngine>(to)
         });
     }
 }
 
+/*
+ * pawns are the most complicated piece on the chess board.
+ * pawns move forward one square, or two squares if the pawn has never moved.
+ * pawns capture enemy pieces one square diagonally
+ * pawns can promote themselves to a powerful piece upon reaching the end of the board.
+ * pawns can capture enemy pawns that where moved up two squares last move, landing next to the pawn.
+ * this movement is called en passant. the pawn moves diagonally, and captures the pawn next to it.
+ * this is they only situation in chess where the capturing piece does not land on the same square as the captured piece
+ */
 template<bool isEngine, bool quiets>
 void MoveGen::genPawnMoves()
 {
@@ -439,19 +469,17 @@ void MoveGen::genPawnMoves()
         // throw away pawn moves that leave the king in check
         pushed &= resolverSquares;
         pushed2 &= resolverSquares;
-
-        // add one square pawn moves
+        // add one square pawn moves to the move list
         while (pushed)
         {
             Square to = popFirstPiece(pushed);
             Square from = isEngine ? north(to) : south(to);
-
-            // throw away moves that break a cardinal pin
+            // throw away pawn moves that break a cardinal pin
             if ((toBoard(from) & cardinalPins) && !(toBoard(to) & cardinalPins))
             {
                 continue;
             }
-
+            // add the one square pawn push
             moveList.push_back(Move{
                 NORMAL,
                 from,
@@ -465,13 +493,12 @@ void MoveGen::genPawnMoves()
         {
             Square to = popFirstPiece(pushed2);
             Square from = isEngine ? north(north(to)) : south(south(to));
-
             // throw away moves that break a cardinal pin
             if ((toBoard(from) & cardinalPins) && !(toBoard(to) & cardinalPins))
             {
                 continue;
             }
-
+            // add the two square pawn push
             moveList.push_back(Move{
                 NORMAL,
                 from,
@@ -481,7 +508,6 @@ void MoveGen::genPawnMoves()
             });
         }
     }
-
     // don't generate capture moves or promotions for cardinal pinned pawns
     pawns &= ~cardinalPins;
     // don't generate push promotions for ordinal pinned pawns
@@ -499,13 +525,13 @@ void MoveGen::genPawnMoves()
     {
         Square to = popFirstPiece(pushPromotions);
         Square from = isEngine ? north(to) : south(to);
+        // generate all four promotion types
         genPromotions<isEngine>(
                 from,
                 to,
                 NONE
         );
     }
-
     // generate captures
     while (pawns)
     {
@@ -524,7 +550,6 @@ void MoveGen::genPawnMoves()
          * moves like pin detection and blocker detection need special cases
          */
         Bitboard enPassant = captures & position.enPassantCapture;
-
         // throw away pawn captures that leave the king in check
         captures &= resolverSquares;
         // make sure we can only capture enemy pieces
@@ -542,7 +567,7 @@ void MoveGen::genPawnMoves()
                     from,
                     to,
                     isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                    position.getPiece(to)
+                    position.getPiece<!isEngine>(to)
             });
         }
         // add promotion capture moves
@@ -552,14 +577,14 @@ void MoveGen::genPawnMoves()
             genPromotions<isEngine>(
                 from,
                 to,
-                position.getPiece(to)
+                position.getPiece<!isEngine>(to)
             );
         }
         /*
          * get rid of en passant captures that leave the king in check.
          * we need to shift the resolver squares to see if capturing this pawn
          * would actually resolve a check. when we generate the resolver
-         * squares we do not take en passant captures into account
+         * squares, we don't take en passant captures into account
          */
         enPassant &= isEngine ? south(resolverSquares) : north(resolverSquares);
         // if we can capture en passant
@@ -606,11 +631,18 @@ void MoveGen::genPawnMoves()
     }
 }
 
+/*
+ * rooks slide along the board in the cardinal directions,
+ * stopping when they capture an enemy piece or are blocked by a friendly piece.
+ * sliding move generation is done by hash table lookup.
+ * all we need to do is make sure ordinal pinned rooks do not move,
+ * and make sure cardinal pinned rooks do not move out of a pin
+ */
 template<bool isEngine, bool quiets>
 void MoveGen::genRookMoves()
 {
     Bitboard rooks = position.pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK];
-    // don't generate moves for an ordinal pinned cardinal piece
+    // don't generate moves for an ordinal pinned rook
     rooks &= ~ordinalPins;
 
     while (rooks)
@@ -645,17 +677,24 @@ void MoveGen::genRookMoves()
                 from,
                 to,
                 isEngine ? ENGINE_ROOK : PLAYER_ROOK,
-                position.getPiece(to)
+                position.getPiece<!isEngine>(to)
             });
         }
     }
 }
 
+/*
+ * bishops slide along the board in the ordinal directions,
+ * stopping when they capture an enemy piece or are blocked by a friendly piece.
+ * sliding move generation is done by hash table lookup.
+ * all we need to do is make sure cardinal pinned bishops do not move,
+ * and make sure ordinal pinned bishops do not move out of a pin
+ */
 template<bool isEngine, bool quiets>
 void MoveGen::genBishopMoves()
 {
     Bitboard bishops = position.pieces[isEngine ? ENGINE_BISHOP : PLAYER_BISHOP];
-    // don't generate moves for a cardinal pinned ordinal piece
+    // don't generate moves for a cardinal pinned bishop
     bishops &= ~cardinalPins;
     while (bishops)
     {
@@ -689,12 +728,21 @@ void MoveGen::genBishopMoves()
                 from,
                 to,
                 isEngine ? ENGINE_BISHOP : PLAYER_BISHOP,
-                position.getPiece(to)
+                position.getPiece<!isEngine>(to)
             });
         }
     }
 }
 
+/*
+ * queens slide along the board in the cardinal and ordinal directions,
+ * stopping when they capture an enemy piece or are blocked by a friendly piece.
+ * sliding move generation is done by hash table lookup.
+ * doing pin resolution is a little more complicated for queens,
+ * because we have to make sure the queen does not illegally jump from
+ * one cardinal/ordinal pin to a different pin of the same type.
+ * We don't have to check for this with other sliding pieces
+ */
 template<bool isEngine, bool quiets>
 void MoveGen::genQueenMoves()
 {
@@ -729,7 +777,6 @@ void MoveGen::genQueenMoves()
                 moves &= cardinalPins;
             }
         }
-
         // throw away queen moves that leave the king in check
         moves &= resolverSquares;
         // all moves
@@ -742,6 +789,7 @@ void MoveGen::genQueenMoves()
         {
             moves &= isEngine ? position.playerPieces : position.enginePieces;
         }
+        // add queen moves to the move list
         while (moves)
         {
             Square to = popFirstPiece(moves);
@@ -750,7 +798,7 @@ void MoveGen::genQueenMoves()
                 from,
                 to,
                 isEngine ? ENGINE_QUEEN : PLAYER_QUEEN,
-                position.getPiece(to)
+                position.getPiece<!isEngine>(to)
             });
         }
     }

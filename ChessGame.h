@@ -8,18 +8,6 @@
 #include <SDL2/SDL.h>
 #include "Search.h"
 
-// a square on the graphical chess board
-struct SquareUI
-{
-    Piece piece;
-    SDL_Rect bounds;
-
-    bool isLight; // is this a light or dark square?
-    bool isMoveOption; // is this square a move option?
-    bool isPreviousMove; // did we just move a piece to or from this square?
-    bool isChecking; // is a piece on this square attacking the enemy king?
-};
-
 class ChessGame
 {
 public:
@@ -27,6 +15,19 @@ public:
     ~ChessGame();
 
 private:
+
+    // a square on the graphical chess board
+    struct SquareUI
+    {
+        PieceType piece;
+        SDL_Rect bounds;
+
+        bool isLight; // is this a light or dark square?
+        bool isMoveOption; // is this square a move option?
+        bool isPreviousMove; // did we just move a piece to or from this square?
+        bool isChecking; // is a piece on this square attacking the enemy king?
+    };
+
     SDL_Window* window;
     SDL_Renderer* renderer;
 
@@ -46,7 +47,7 @@ private:
     // if true, we want to display promotion choices
     bool isPromoting;
     std::vector<SquareUI> promotionOptions;
-    Piece promotionChoice;
+    PieceType promotionChoice;
 
     // initialize graphical board with square bounds and colors
     void createBoard();
@@ -59,7 +60,7 @@ private:
 
     // get whatever square the cursor is over. will return
     // NULL_SQUARE if the cursor is not over a square
-    Square getSquareHovering(SDL_Point mouse);
+    Square getSquareHovering(SDL_Point* mouse);
 
     /*
      * create a move based on what piece the player moved,
@@ -68,7 +69,7 @@ private:
      */
     Move getMove();
 
-    SDL_Texture* loadPieceTexture(Piece piece);
+    SDL_Texture* loadPieceTexture(PieceType piece);
     // render the chess board
     void render();
     // event loop

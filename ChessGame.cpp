@@ -82,7 +82,7 @@ void ChessGame::createBoard()
 
     for (int piece = PLAYER_PAWN; piece < NONE; piece++)
     {
-        pieceTextures[piece] = loadPieceTexture((Piece)piece);
+        pieceTextures[piece] = loadPieceTexture((PieceType)piece);
     }
     for (Square square = A1; square <= H8; square++)
     {
@@ -116,7 +116,7 @@ void ChessGame::updateBoard()
  * during the entire lifetime of the program. we store the textures in a
  * vector to avoid reloading them every frame and making things slow.
 */
-SDL_Texture* ChessGame::loadPieceTexture(Piece piece)
+SDL_Texture* ChessGame::loadPieceTexture(PieceType piece)
 {
     assert(piece != NONE);
 
@@ -148,13 +148,13 @@ SDL_Texture* ChessGame::loadPieceTexture(Piece piece)
     return texture;
 }
 
-Square ChessGame::getSquareHovering(SDL_Point mouse)
+Square ChessGame::getSquareHovering(SDL_Point* mouse)
 {
     for (Square square = A1; square <= H8; square++)
     {
         SquareUI& squareUi = board[square];
         if (SDL_PointInRect(
-                new SDL_Point{mouse.x, mouse.y},
+                mouse,
                 &squareUi.bounds))
         {
             return square;
@@ -233,25 +233,19 @@ void ChessGame::render()
 }
 
 /*
- * get a Move struct for whatever move the player made
- * TODO: we won't need to care about engine pieces here,
- *  we are only going to use this for player pieces.
- *  some of this code is temporary so the user can control
- *  both sides of the board, for debugging purposes
+ * get an initialized Move struct representing whatever move the player made.
+ * this function supports en passant, promotion, and castling.
+ * if the player promotes, this function raises the isPromoting flag,
+ * and the move that gets returned is not made. once the player decides
+ * what piece to promote to, the promotion is made on the board
  */
 Move ChessGame::getMove()
 {
-    assert(dragging.piece != NONE);
-    assert(draggingFrom >= A1);
-    assert(draggingFrom <= H8);
-    assert(draggingTo >= A1);
-    assert(draggingTo <= H8);
-
     MoveType moveType = NORMAL;
-    Piece captured = position.getPiece(draggingTo);
+    PieceType captured = position.getPiece<true>(draggingTo);
 
     // if we are moving a king
-    if (dragging.piece == ENGINE_KING || dragging.piece == PLAYER_KING)
+    if (dragging.piece == PLAYER_KING)
     {
         // if the king is moving along a rank
         if (getRank(draggingFrom) == getRank(draggingTo))
@@ -265,7 +259,7 @@ Move ChessGame::getMove()
         }
     }
     // if we are moving a pawn
-    if (dragging.piece == ENGINE_PAWN || dragging.piece == PLAYER_PAWN)
+    if (dragging.piece == PLAYER_PAWN)
     {
         // if we are capturing en passant
         if (getFile(draggingTo) != getFile(draggingFrom) && board[draggingTo].piece == NONE)
@@ -274,9 +268,9 @@ Move ChessGame::getMove()
             captured = (dragging.piece == ENGINE_PAWN) ? PLAYER_PAWN : ENGINE_PAWN;
         }
         // if we are promoting a pawn
-        if (getRank(draggingTo) == 7 || getRank(draggingTo) == 0)
+        if (getRank(draggingTo) == 7)
         {
-            // if we have already made the choice
+            // if we have already made the promotion choice
             if (promotionChoice != NONE)
             {
                 // figure out what we want to promote to
@@ -329,7 +323,6 @@ Move ChessGame::getMove()
             }
         }
     }
-
     return Move{
         moveType,
         draggingFrom,
@@ -361,8 +354,7 @@ void ChessGame::onMousePressed(SDL_Point& mouse)
     else
     {
         // figure out what square the user clicked on
-        Square clicked = getSquareHovering(mouse);
-
+        Square clicked = getSquareHovering(&mouse);
         // if we clicked on a square
         if (clicked != NULL_SQUARE)
         {
@@ -394,7 +386,6 @@ void ChessGame::onMousePressed(SDL_Point& mouse)
                         board[move.to].isMoveOption = true;
                     }
                 }
-
                 // remove the piece from its square
                 square.piece = NONE;
             }
@@ -414,7 +405,7 @@ void ChessGame::onMouseReleased(SDL_Point& mouse)
             if (promotionChoice == NONE)
             {
                 // figure out what square we want to drop the piece
-                draggingTo = getSquareHovering(mouse);
+                draggingTo = getSquareHovering(&mouse);
             }
             if (draggingTo != NULL_SQUARE && board[draggingTo].isMoveOption)
             {
@@ -428,19 +419,11 @@ void ChessGame::onMouseReleased(SDL_Point& mouse)
                 }
                 clearHighlights();
 
-                // to remember what pieces are checking the king, if any
-                Bitboard checkers = EMPTY_BITBOARD;
                 // make the move
-                if (position.isEngineMove)
-                {
-                    position.makeMove<true>(move);
-                    checkers = search.moveGen.getCheckers<false>();
-                }
-                else
-                {
-                    position.makeMove<false>(move);
-                    checkers = search.moveGen.getCheckers<true>();
-                }
+                position.makeMove<false>(move);
+                // to remember what pieces are checking the king, if any
+                Bitboard checkers = search.moveGen.getCheckers<true>();
+
                 // set previous move highlights
                 board[draggingTo].isPreviousMove = true;
                 board[draggingFrom].isPreviousMove = true;
@@ -452,10 +435,8 @@ void ChessGame::onMouseReleased(SDL_Point& mouse)
                 {
                     board[popFirstPiece(checkers)].isChecking = true;
                 }
-
             }
         }
-
         // we released the mouse.
         // forget whatever we were dragging
         draggingFrom = NULL_SQUARE;
@@ -516,21 +497,29 @@ void ChessGame::run()
             {
                 render();
             }
-            /*
-            if (enginesTurn)
+            // if it is the engine's turn
+            if (position.isEngineMove)
             {
                 // spend potentially many seconds calculating a move...
                 Move engineMove = search.getBestMove();
                 // play the move
-                search.moveGen.position.makeMove(engineMove);
+                search.moveGen.position.makeMove<true>(engineMove);
                 clearHighlights();
                 updateBoard();
+                // to remember what pieces are checking the engine king, if any
+                Bitboard checkers = search.moveGen.getCheckers<false>();
+                // if we the engine is in check, highlight the king
+                board[toSquare(position.pieces[position.isEngineMove ? ENGINE_KING : PLAYER_KING])].isChecking = checkers;
+                // highlight the pieces checking the engine king
+                while (checkers)
+                {
+                    board[popFirstPiece(checkers)].isChecking = true;
+                }
                 board[engineMove.to].isPreviousMove = true;
                 board[engineMove.from].isPreviousMove = true;
                 // render the engine's move
                 render();
-                enginesTurn = false;
-            }*/
+            }
         }
     }
 }

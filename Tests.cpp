@@ -19,15 +19,14 @@ void Tests::perftSuite()
     assert(runPerft(3, POS_1) == 8902);
     assert(runPerft(4, POS_1) == 197281);
     assert(runPerft(5, POS_1) == 4865609);
-    assert(runPerft(6, POS_1) == 119060324); // ~11.5 secs
-
+    assert(runPerft(6, POS_1) == 119060324); // ~11 secs
 
     std::cout << "* running perft test for position 2: \"" << POS_2 << "\"\n";
     assert(runPerft(1, POS_2) == 48);
     assert(runPerft(2, POS_2) == 2039);
     assert(runPerft(3, POS_2) == 97862);
     assert(runPerft(4, POS_2) == 4085603);
-    assert(runPerft(5, POS_2) == 193690690); // ~17.5 secs
+    assert(runPerft(5, POS_2) == 193690690); // ~15 secs
 
     std::cout << "* running perft test for position 3: \"" << POS_3 << "\"\n";
     assert(runPerft(1, POS_3) == 14);
@@ -36,7 +35,7 @@ void Tests::perftSuite()
     assert(runPerft(4, POS_3) == 43238);
     assert(runPerft(5, POS_3) == 674624);
     assert(runPerft(6, POS_3) == 11030083);
-    assert(runPerft(7, POS_3) == 178633661); // ~19.5 secs
+    assert(runPerft(7, POS_3) == 178633661); // ~17 secs
 
     std::cout << "* running perft test for position 4: \"" << POS_4 << "\"\n";
     assert(runPerft(1, POS_4) == 6);
@@ -50,16 +49,16 @@ void Tests::perftSuite()
     assert(runPerft(2, POS_5) == 1486);
     assert(runPerft(3, POS_5) == 62379);
     assert(runPerft(4, POS_5) == 2103487);
-    assert(runPerft(5, POS_5) == 89941194); // ~8.5 secs
+    assert(runPerft(5, POS_5) == 89941194); // ~7 secs
 
     std::cout << "* running perft test for position 6: \"" << POS_6 << "\"\n";
     assert(runPerft(1, POS_6) == 46);
     assert(runPerft(2, POS_6) == 2079);
     assert(runPerft(3, POS_6) == 89890);
     assert(runPerft(4, POS_6) == 3894594);
-    assert(runPerft(5, POS_6) == 164075551); // ~15.5 secs
+    assert(runPerft(5, POS_6) == 164075551); // ~13 secs
 
-    // ~75 secs
+    // ~65 secs
     std::cout << "* perft suite run terminated." << std::endl;
     std::cout << "* " << (clock() - start) / CLOCKS_PER_SEC << " seconds elapsed." << std::endl;
 
@@ -104,7 +103,6 @@ void Tests::perft(int depth, int& numLeafNodes)
     {
         moveGen->genPlayerMoves();
     }
-
     // if we are one depth higher than the leaf node depth
     if (depth == 1)
     {
@@ -112,9 +110,8 @@ void Tests::perft(int depth, int& numLeafNodes)
         numLeafNodes += moveGen->moveList.size();
         return;
     }
-
-    std::vector<Move> copy = moveGen->moveList;
-    for (Move& move : copy)
+    std::vector<Move> moveList = moveGen->moveList;
+    for (Move& move : moveList)
     {
         bool playerCastleKingside = position->playerCastleKingside;
         bool playerCastleQueenside = position->playerCastleQueenside;
@@ -134,6 +131,11 @@ void Tests::perft(int depth, int& numLeafNodes)
         perft(depth - 1, numLeafNodes);
 
         // unmake move
+        position->enPassantCapture = enPassantCapture;
+        position->playerCastleKingside = playerCastleKingside;
+        position->playerCastleQueenside = playerCastleQueenside;
+        position->engineCastleKingside = engineCastleKingside;
+        position->engineCastleQueenside = engineCastleQueenside;
         if (position->isEngineMove)
         {
             position->unMakeMove<false>(move);
@@ -142,10 +144,5 @@ void Tests::perft(int depth, int& numLeafNodes)
         {
             position->unMakeMove<true>(move);
         }
-        position->enPassantCapture = enPassantCapture;
-        position->playerCastleKingside = playerCastleKingside;
-        position->playerCastleQueenside = playerCastleQueenside;
-        position->engineCastleKingside = engineCastleKingside;
-        position->engineCastleQueenside = engineCastleQueenside;
     }
 }

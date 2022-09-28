@@ -6,6 +6,7 @@
 #define DEEPENING1_MOVEGEN_H
 
 #include "Position.h"
+#include "Magics.h"
 
 class MoveGen
 {
@@ -26,7 +27,6 @@ public:
 
     /*
      * get a bitboard of pieces that are attacking the king.
-     * used in ChessGame.cpp to highlight the checking pieces
      */
     template<bool isEngine>
     Bitboard getCheckers()
@@ -53,7 +53,7 @@ public:
 private:
 
     template<bool isEngine>
-    void genPromotions(Square from, Square to, Piece captured);
+    void genPromotions(Square from, Square to, PieceType captured);
 
     // squares where the king is safe to move to
     Bitboard safeSquares;
