@@ -17,7 +17,6 @@ void MoveGen::genEngineMoves()
     updatePins<true, true>();
     updatePins<true, false>();
 
-
     genPawnMoves<true, true>();
     genKnightMoves<true, true>();
     genKingMoves<true, true>();
@@ -427,6 +426,8 @@ void MoveGen::genPawnMoves()
         Bitboard pushed = pawns & ~ordinalPins;
         // generate one square pawn pushes
         pushed = isEngine ? south(pushed) : north(pushed);
+        // don't generate promotions here, those are not quiet moves.
+        pushed &= isEngine ? ~RANK_0 : ~RANK_7;
         // we can only push a pawn if the square in front of it is empty
         pushed &= position.empties;
         // generate two square pawn pushes
@@ -445,7 +446,7 @@ void MoveGen::genPawnMoves()
             Square to = popFirstPiece(pushed);
             Square from = isEngine ? north(to) : south(to);
 
-            // throw away moves that break a horizontal pin
+            // throw away moves that break a cardinal pin
             if ((toBoard(from) & cardinalPins) && !(toBoard(to) & cardinalPins))
             {
                 continue;
@@ -465,7 +466,7 @@ void MoveGen::genPawnMoves()
             Square to = popFirstPiece(pushed2);
             Square from = isEngine ? north(north(to)) : south(south(to));
 
-            // throw away moves that break a horizontal pin
+            // throw away moves that break a cardinal pin
             if ((toBoard(from) & cardinalPins) && !(toBoard(to) & cardinalPins))
             {
                 continue;
@@ -481,59 +482,89 @@ void MoveGen::genPawnMoves()
         }
     }
 
-    // push the pawns one square up
-    Bitboard pushPromoting = isEngine ? south(pawns) : north(pawns);
-    // isolate promotion squares
-    pushPromoting &= isEngine ? RANK_0 : RANK_7;
-    // make sure we cannot push onto another piece
-    pushPromoting &= ~position.occupied;
+    // don't generate capture moves or promotions for cardinal pinned pawns
+    pawns &= ~cardinalPins;
+    // don't generate push promotions for ordinal pinned pawns
+    Bitboard pushPromotions = pawns & ~ordinalPins;
+    // push the pawns one square forward
+    pushPromotions = isEngine ? south(pushPromotions) : north(pushPromotions);
+    // make sure we cannot promote on top of another piece
+    pushPromotions &= position.empties;
     // throw away pawn push promotions that leave the king in check
-    pushPromoting &= resolverSquares;
-    // add promotion moves
-    while (pushPromoting)
+    pushPromotions &= resolverSquares;
+    // isolate promotion squares
+    pushPromotions &= isEngine ? RANK_0 : RANK_7;
+    // add push promotion moves
+    while (pushPromotions)
     {
-        Square to = popFirstPiece(pushPromoting);
+        Square to = popFirstPiece(pushPromotions);
         Square from = isEngine ? north(to) : south(to);
-
-        // throw away moves that break a horizontal pin
-        if ((toBoard(from) & cardinalPins) && !(toBoard(to) & cardinalPins))
-        {
-            continue;
-        }
-        
         genPromotions<isEngine>(
                 from,
                 to,
-                position.getPiece(to)
+                NONE
         );
     }
 
-    // don't generate capture moves for cardinal pinned pawns
-    pawns &= ~cardinalPins;
     // generate captures
     while (pawns)
     {
         Square from = popFirstPiece(pawns);
         Bitboard captures = isEngine ? ENGINE_PAWN_CAPTURES[from] : PLAYER_PAWN_CAPTURES[from];
-
         // if this pawn is ordinal pinned
         if (toBoard(from) & ordinalPins)
         {
             // we can still capture, but only along the pin
             captures &= ordinalPins;
         }
-        // find an en passant capture
+        /*
+         * find an en passant capture before we validate legality for a normal capturing move.
+         * en passant works slightly differently because the capturing pawn does not
+         * land on the same square it captures on, so things that work well for other
+         * moves like pin detection and blocker detection need special cases
+         */
         Bitboard enPassant = captures & position.enPassantCapture;
+
+        // throw away pawn captures that leave the king in check
+        captures &= resolverSquares;
+        // make sure we can only capture enemy pieces
+        captures &= (isEngine ? position.playerPieces : position.enginePieces);
+        // isolate moves capturing with promotion
+        Bitboard promotionCaptures = captures & (isEngine ? RANK_0 : RANK_7);
+        // make sure we do not include promotion captures as normal captures
+        captures &= (isEngine ? ~RANK_0 : ~RANK_7);
+        // add normal capture moves
+        while (captures)
+        {
+            Square to = popFirstPiece(captures);
+            moveList.push_back(Move{
+                    NORMAL,
+                    from,
+                    to,
+                    isEngine ? ENGINE_PAWN : PLAYER_PAWN,
+                    position.getPiece(to)
+            });
+        }
+        // add promotion capture moves
+        while (promotionCaptures)
+        {
+            Square to = popFirstPiece(promotionCaptures);
+            genPromotions<isEngine>(
+                from,
+                to,
+                position.getPiece(to)
+            );
+        }
+        /*
+         * get rid of en passant captures that leave the king in check.
+         * we need to shift the resolver squares to see if capturing this pawn
+         * would actually resolve a check. when we generate the resolver
+         * squares we do not take en passant captures into account
+         */
+        enPassant &= isEngine ? south(resolverSquares) : north(resolverSquares);
         // if we can capture en passant
         if (enPassant)
         {
-            /*
-             * get rid of en passant captures that leave the king in check.
-             * we need to shift the resolver squares to see if capturing this pawn
-             * would actually resolve a check. when we generate the resolver
-             * squares we do not take en passant captures into account
-             */
-            enPassant &= isEngine ? south(resolverSquares) : north(resolverSquares);
             /*
              * there is a special case that must be accounted for.
              * we cannot capture en passant if it breaks a horizontal pin.
@@ -541,59 +572,36 @@ void MoveGen::genPawnMoves()
              * this pin goes through two pieces, not one. So now we must do some
              * special manual pin detection for en passant captures
              */
-            // start by removing the pawn we are capturing en-passant
+            // start with removing the pawn we are capturing by en-passant
             Bitboard enPassantSquare = isEngine ? north(position.enPassantCapture) : south(position.enPassantCapture);
             position.occupied ^= enPassantSquare;
-            // get horizontal attacks outward from the pawn we are capturing with,
-            // ignoring the pawn we are capturing with en passant
-            Bitboard horizontalAttacks = getSlidingMoves<true>(from) & (isEngine ? RANK_3 : RANK_4);
+            /*
+             * get cardinal sliding attacks outward from the pawn we are capturing with,
+             * but without the that pawn that is being captured en passant.
+             * this creates an attack ray where we can then check for piece types
+             * in order to detect a horizontally pinned en passant move
+             */
+            Bitboard horizontalAttacks = getSlidingMoves<true>(from);
+            // make sure we only care about a horizontal pin
+            horizontalAttacks &= (isEngine ? RANK_3 : RANK_4);
             // isolate our king and an attacking enemy horizontal sliding piece
             horizontalAttacks &= position.pieces[isEngine ? ENGINE_KING : PLAYER_KING] |
                                  position.pieces[isEngine ? PLAYER_QUEEN : ENGINE_QUEEN] |
                                  position.pieces[isEngine ? PLAYER_ROOK : ENGINE_ROOK];
-            // put the pawn we are capturing en-passant back on the board
+            // put the pawn that is being captured en-passant back on the board
             position.occupied ^= enPassantSquare;
 
             // if there are not two pieces on the pin ray, the pawn is not pinned
             if (countPieces(horizontalAttacks) != 2)
             {
                 moveList.push_back(Move{
-                        EN_PASSANT,
-                        from,
-                        toSquare(enPassant),
-                        isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                        isEngine ? PLAYER_PAWN : ENGINE_PAWN,
+                    EN_PASSANT,
+                    from,
+                    toSquare(enPassant),
+                    isEngine ? ENGINE_PAWN : PLAYER_PAWN,
+                    isEngine ? PLAYER_PAWN : ENGINE_PAWN,
                 });
             }
-
-
-        }
-        // throw away pawn captures that leave the king in check
-        captures &= resolverSquares;
-        // make sure we can only capture enemy pieces
-        captures &= (isEngine ? position.playerPieces : position.enginePieces);
-        // figure out the promotions for this pawn
-        Bitboard promotions = captures & (isEngine ? RANK_7 : RANK_0);
-        while (captures)
-        {
-            Square to = popFirstPiece(captures);
-            moveList.push_back(Move{
-                NORMAL,
-                from,
-                to,
-                isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                position.getPiece(to)
-            });
-        }
-        // generate all promotion types for this capture
-        while (promotions)
-        {
-            Square to = popFirstPiece(promotions);
-            genPromotions<isEngine>(
-                from,
-                to,
-                position.getPiece(to)
-            );
         }
     }
 }

@@ -141,11 +141,12 @@ public:
         enPassantCapture = EMPTY_BITBOARD;
 
         // if we moved a pawn without a capture
-        if (move.moved == PLAYER_PAWN || move.moved == ENGINE_PAWN && move.captured == NONE)
+        if ((move.moved == PLAYER_PAWN || move.moved == ENGINE_PAWN) && move.captured == NONE)
         {
             // if we made a double push pawn move
             if (abs(move.to - move.from) > 8)
             {
+                // remember this double push pawn move enables en passant
                 enPassantCapture = toBoard(isEngine ? north(move.to) : south(move.to));
             }
         }
@@ -177,8 +178,8 @@ public:
         // if we did not make a promotion
         else
         {
-            // put the piece on its new square
-            pieces[move.moved] |= toBoard(move.to);
+            // put the piece we are moving on its new square
+            pieces[move.moved] ^= toBoard(move.to);
         }
 
         // if we moved a rook
@@ -225,7 +226,7 @@ public:
             // if we castled
             if (move.type == CASTLE)
             {
-                // figure out which rooks we want to move
+                // figure out which rook we want to move
                 Bitboard& rooks = pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK];
                 if (isEngine)
                 {
@@ -234,7 +235,7 @@ public:
                     // remove either the right or left rook
                     rooks ^= toBoard(isRightCastle ? H8 : A8);
                     // place a rook to the right or left of the king
-                    rooks |= toBoard(isRightCastle ? west(move.to) : east(move.to));
+                    rooks ^= toBoard(isRightCastle ? west(move.to) : east(move.to));
                 }
                 else
                 {
