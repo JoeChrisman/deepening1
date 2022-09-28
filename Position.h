@@ -242,8 +242,7 @@ public:
                     // remove either the right or left rook
                     rooks ^= toBoard(isRightCastle ? H1 : A1);
                     // place a rook to the right or left of the king
-                    rooks |= toBoard(isRightCastle ? west(move.to) : east(move.to));
-
+                    rooks ^= toBoard(isRightCastle ? west(move.to) : east(move.to));
                 }
             }
         }
@@ -251,6 +250,96 @@ public:
         updateBitboards();
         isEngineMove = !isEngineMove;
     };
+
+    /*
+     * un-make a move on the board. This function will restore the board state
+     * to the exact way it was before the given move was made, except for these things:
+     * 1) castling rights
+     * 2) en passant capture square
+     * It does not undo these things because:
+     * 1) there is no way to know if the previous move caused a loss of castling right
+     * 2) there is no way to know what the en passant square should become, if we were to undo
+     * because of these reasons, the en passant capture square and castling rights will be stored
+     * on the call stack during the search. Hopefully, doing unmake() should still be faster than
+     * copying the entire position onto the stack during the search.
+     * TODO: test performance of make-search-unmake vs copy-make-search-restore
+     */
+    template<bool isEngine>
+    void unMakeMove(Move& move)
+    {
+        // add the piece back to where it came from
+        pieces[move.moved] ^= toBoard(move.from);
+
+        // if we want to undo an en-passant capture
+        if (move.type == EN_PASSANT)
+        {
+            // restore the captured pawn
+            pieces[move.captured] ^= toBoard(isEngine ? north(move.to) : south(move.to));
+        }
+        // if we want to undo a normal capture
+        else if (move.captured != NONE)
+        {
+            // restore captured piece
+            pieces[move.captured] ^= toBoard(move.to);
+        }
+        // if we want to undo a promotion
+        if (move.type >= KNIGHT_PROMOTION)
+        {
+            // remove our promoted knight
+            if (move.type == KNIGHT_PROMOTION)
+            {
+                pieces[isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT] ^= toBoard(move.to);
+            }
+            // remove our promoted bishop
+            else if (move.type == BISHOP_PROMOTION)
+            {
+                pieces[isEngine ? ENGINE_BISHOP : PLAYER_BISHOP] ^= toBoard(move.to);
+            }
+            // remove our promoted rook
+            else if (move.type == ROOK_PROMOTION)
+            {
+                pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK] ^= toBoard(move.to);
+            }
+            // remove our promoted queen
+            else if (move.type == QUEEN_PROMOTION)
+            {
+                pieces[isEngine ? ENGINE_QUEEN : PLAYER_QUEEN] ^= toBoard(move.to);
+            }
+        }
+        // if we are not undoing promotion
+        else
+        {
+            // remove the piece we moved from where it came from
+            pieces[move.moved] ^= toBoard(move.to);
+        }
+        // if we want to undo castling
+        if (move.type == CASTLE)
+        {
+            // we already moved the king back to where it came from.
+            // we just have to un-castle the castled rook
+            if (isEngine)
+            {
+                bool wasRightCastle = move.to == F8 || move.to == G8;
+                // remove the rook from next to the king
+                pieces[ENGINE_ROOK] ^= toBoard(wasRightCastle ? west(move.to) : east(move.to));
+                // put the rook back to where it came from
+                pieces[ENGINE_ROOK] ^= toBoard(wasRightCastle ? H8 : A8);
+            }
+            else
+            {
+                bool wasRightCastle = move.to == F1 || move.to == G1;
+                // remove the rook from next to the king
+                pieces[PLAYER_ROOK] ^= toBoard(wasRightCastle ? west(move.to) : east(move.to));
+                // put the rook back to where it came from
+                pieces[PLAYER_ROOK] ^= toBoard(wasRightCastle ? H1 : A1);
+
+            }
+        }
+        // update additional position information
+        updateBitboards();
+        isEngineMove = !isEngineMove;
+
+    }
 
 private:
     void readFen(const std::string& fen);
