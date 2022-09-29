@@ -15,6 +15,8 @@ public:
     MoveGen(Position& _position);
 
     Position& position;
+    // squares where the king is safe to move to
+    Bitboard safeSquares;
 
     std::vector<Move> moveList;
 
@@ -55,8 +57,6 @@ private:
     template<bool isEngine>
     void genPromotions(Square from, Square to, PieceType captured);
 
-    // squares where the king is safe to move to
-    Bitboard safeSquares;
     template<bool isEngine>
     void updateSafeSquares();
 

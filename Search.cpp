@@ -17,21 +17,26 @@ evaluator(position)
  * when the player is winning, we have a negative evaluation.
  * so find the move with the lowest evaluation
  */
-int Search::min(int depth, int alpha, int beta)
+int Search::min(int ply, int maxDepth, int alpha, int beta)
 {
+    if (ply > maxDepth)
+    {
+        return evaluator.evaluate();
+    }
+
     moveGen.genPlayerMoves();
     std::vector<Move> moveList = moveGen.moveList;
-
     // if there are no legal moves, it is either checkmate or stalemate
     if (moveList.empty())
     {
-        // just assume stalemate for now
-        return 0;
-    }
-
-    if (depth == 0)
-    {
-        return position.materialScore;
+        // if the king is safe
+        if (position.pieces[PLAYER_KING] & moveGen.safeSquares)
+        {
+            // stalemate
+            return 0;
+        }
+        // checkmate
+        return MAX_EVAL - ply;
     }
 
     int bestScore = MAX_EVAL;
@@ -39,6 +44,7 @@ int Search::min(int depth, int alpha, int beta)
     while (selectMove(moveList, moveIndex))
     {
         Move& move = moveList[moveIndex++];
+
         // make the move
         bool playerCastleKingside = position.playerCastleKingside;
         bool playerCastleQueenside = position.playerCastleQueenside;
@@ -47,7 +53,7 @@ int Search::min(int depth, int alpha, int beta)
         Bitboard enPassantCapture = position.enPassantCapture;
         position.makeMove<false>(move);
 
-        int score = max(depth - 1, alpha, beta);
+        int score = max(ply + 1, maxDepth, alpha, beta);
 
         // unmake the move
         position.enPassantCapture = enPassantCapture;
@@ -57,20 +63,20 @@ int Search::min(int depth, int alpha, int beta)
         position.engineCastleQueenside = engineCastleQueenside;
         position.unMakeMove<false>(move);
 
-        if (score <= alpha)
-        {
-            return alpha;
-        }
-        if (score < beta)
-        {
-            beta = score;
-        }
         if (score < bestScore)
         {
             bestScore = score;
         }
+        if (bestScore < beta)
+        {
+            beta = bestScore;
+        }
+        if (beta <= alpha)
+        {
+            break;
+        }
     }
-    return beta;
+    return bestScore;
 }
 
 /*
@@ -78,20 +84,26 @@ int Search::min(int depth, int alpha, int beta)
  * when the engine is winning, we have a positive evaluation.
  * so find the move with the highest evaluation
  */
-int Search::max(int depth, int alpha, int beta)
+int Search::max(int ply, int maxDepth, int alpha, int beta)
 {
+    if (ply > maxDepth)
+    {
+        return evaluator.evaluate();
+    }
+
     moveGen.genEngineMoves();
     std::vector<Move> moveList = moveGen.moveList;
-
     // if there are no legal moves, it is either checkmate or stalemate
     if (moveList.empty())
     {
-        // just assume stalemate for now
-        return 0;
-    }
-    if (depth == 0)
-    {
-        return position.materialScore;
+        // if the king is safe
+        if (position.pieces[ENGINE_KING] & moveGen.safeSquares)
+        {
+            // stalemate
+            return 0;
+        }
+        // checkmate
+        return MIN_EVAL + ply;
     }
 
     int bestScore = MIN_EVAL;
@@ -107,7 +119,7 @@ int Search::max(int depth, int alpha, int beta)
         Bitboard enPassantCapture = position.enPassantCapture;
         position.makeMove<true>(move);
 
-        int score = min(depth - 1, alpha, beta);
+        int score = min(ply + 1, maxDepth, alpha, beta);
 
         // unmake the move
         position.enPassantCapture = enPassantCapture;
@@ -117,30 +129,33 @@ int Search::max(int depth, int alpha, int beta)
         position.engineCastleQueenside = engineCastleQueenside;
         position.unMakeMove<true>(move);
 
-        if (score >= beta)
-        {
-            return beta;
-        }
-        if (score > alpha)
-        {
-            alpha = score;
-        }
         if (score > bestScore)
         {
             bestScore = score;
         }
+        if (bestScore > alpha)
+        {
+            alpha = bestScore;
+        }
+        if (beta <= alpha)
+        {
+            break;
+        }
     }
-    return alpha;
+    return bestScore;
 
 }
 
 Move Search::getBestMove()
 {
+    std::cout << "advantage: " << position.materialScore << std::endl;
+
     moveGen.genEngineMoves();
     std::vector<Move> moveList = moveGen.moveList;
     // if the engine is in checkmate or stalemate
     if (moveList.empty())
     {
+        assert(false);
         // return an empty move
         return Move{
             NORMAL,
@@ -153,8 +168,10 @@ Move Search::getBestMove()
 
     Move bestMove{};
     int bestScore = MIN_EVAL;
-    for (Move& move : moveList)
+    int moveIndex = 0;
+    while (selectMove(moveList, moveIndex))
     {
+        Move move = moveList[moveIndex++];
         // make the move
         bool playerCastleKingside = position.playerCastleKingside;
         bool playerCastleQueenside = position.playerCastleQueenside;
@@ -163,7 +180,7 @@ Move Search::getBestMove()
         Bitboard enPassantCapture = position.enPassantCapture;
         position.makeMove<true>(move);
 
-        int score = min(4, MIN_EVAL, MAX_EVAL);
+        int score = min(1, 5, MIN_EVAL, MAX_EVAL);
         if (score > bestScore)
         {
             bestScore = score;

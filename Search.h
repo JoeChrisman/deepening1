@@ -27,8 +27,8 @@ private:
      * https://www.chessprogramming.org/Minimax
      * https://www.chessprogramming.org/Alpha-Beta
      */
-    int min(int depth, int alpha, int beta);
-    int max(int depth, int alpha, int beta);
+    int min(int ply, int maxDepth, int alpha, int beta);
+    int max(int ply, int maxDepth, int alpha, int beta);
 
     /*
      * swap the best move in the move list that occurs after the given index
@@ -36,6 +36,11 @@ private:
      * alpha beta search optimization. it orders moves based on difference
      * between the score of material captured and material captured with.
      * this function returns true while there is still a move to be selected
+     *
+     * the sorting works like this:
+     * 1) winning captures (PxQ)
+     * 2) losing captures (QxP)
+     * 3) quiet moves
      */
     inline bool selectMove(std::vector<Move>& moveList, int index)
     {
@@ -43,20 +48,40 @@ private:
         {
             return false;
         }
-        Move& move = moveList[index];
+        Move move = moveList[index];
         int bestIndex = index;
-        // sort winning captures before losing captures (PxQ before QxP)
-        // this score will always be at least the positive score of a pawn
-        int bestScore = PIECE_SCORES[PLAYER_QUEEN] +
-                        abs(PIECE_SCORES[move.captured]) -
-                        abs(PIECE_SCORES[move.moved]);
+        int bestScore;
+        if (move.captured != NONE)
+        {
+            // sort winning captures before losing captures (PxQ before QxP),
+            // the score will always be at least the value of a pawn
+            bestScore = PIECE_SCORES[ENGINE_QUEEN] +
+                        PIECE_SCORES[move.captured] -
+                        PIECE_SCORES[move.moved];
+        }
+        else
+        {
+            bestScore = -1;
+        }
+
+
         // find the index of the best capture after the given index
         for (int i = index + 1; i < moveList.size(); i++)
         {
             move = moveList[i];
-            int score = PIECE_SCORES[PLAYER_QUEEN] +
-                        abs(PIECE_SCORES[move.captured]) -
-                        abs(PIECE_SCORES[move.moved]);
+
+            int score;
+            if (move.captured != NONE)
+            {
+                score = PIECE_SCORES[ENGINE_QUEEN] +
+                            PIECE_SCORES[move.captured] -
+                            PIECE_SCORES[move.moved];
+            }
+            else
+            {
+                score = -1;
+            }
+
             if (score > bestScore)
             {
                 bestScore = score;
