@@ -35,8 +35,10 @@ int Search::min(int depth, int alpha, int beta)
     }
 
     int bestScore = MAX_EVAL;
-    for (Move& move : moveList)
+    int moveIndex = 0;
+    while (selectMove(moveList, moveIndex))
     {
+        Move& move = moveList[moveIndex++];
         // make the move
         bool playerCastleKingside = position.playerCastleKingside;
         bool playerCastleQueenside = position.playerCastleQueenside;
@@ -93,8 +95,10 @@ int Search::max(int depth, int alpha, int beta)
     }
 
     int bestScore = MIN_EVAL;
-    for (Move& move : moveList)
+    int moveIndex = 0;
+    while (selectMove(moveList, moveIndex))
     {
+        Move& move = moveList[moveIndex++];
         // make the move
         bool playerCastleKingside = position.playerCastleKingside;
         bool playerCastleQueenside = position.playerCastleQueenside;
@@ -165,6 +169,8 @@ Move Search::getBestMove()
             bestScore = score;
             bestMove = move;
         }
+
+        std::cout << squares::toNotation(move) << ": " << score << std::endl;
 
         // unmake the move
         position.enPassantCapture = enPassantCapture;

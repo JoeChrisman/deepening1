@@ -96,12 +96,12 @@ public:
 
         // remove the piece we are moving
         pieces[move.moved] ^= from;
+        // subtract some material score if we captured a piece
+        materialScore -= PIECE_SCORES[move.captured];
 
         // if we captured something
         if (move.captured != NONE)
         {
-            // subtract some material score if we captured a piece
-            materialScore -= PIECE_SCORES[move.captured];
             // captures are irreversible moves
             halfMoveClock = 0;
             // if we captured en-passant
@@ -291,6 +291,8 @@ public:
 
         // add the piece back to where it came from
         pieces[move.moved] ^= from;
+        // add back some material score if we are un-capturing a piece
+        materialScore += PIECE_SCORES[move.captured];
 
         // if we want to undo an en-passant capture
         if (move.type == EN_PASSANT)
@@ -303,8 +305,6 @@ public:
         {
             // restore captured piece
             pieces[move.captured] ^= to;
-            // add back some material score if we are un-capturing a piece
-            materialScore += PIECE_SCORES[move.captured];
         }
         // if we want to undo a promotion
         if (move.type >= KNIGHT_PROMOTION)
