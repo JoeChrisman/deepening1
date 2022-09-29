@@ -11,7 +11,7 @@
 class ChessGame
 {
 public:
-    ChessGame(Position& _position);
+    ChessGame(Position& position);
     ~ChessGame();
 
 private:

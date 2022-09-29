@@ -4,9 +4,9 @@
 
 #include "ChessGame.h"
 
-ChessGame::ChessGame(Position& _position) :
-search(_position),
-position(_position)
+ChessGame::ChessGame(Position& position) :
+search(position),
+position(position)
 {
     SDL_Init(SDL_INIT_EVERYTHING);
 

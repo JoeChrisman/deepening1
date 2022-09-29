@@ -118,7 +118,6 @@ void Tests::perft(int depth, int& numLeafNodes)
         bool engineCastleKingside = position->engineCastleKingside;
         bool engineCastleQueenside = position->engineCastleQueenside;
         Bitboard enPassantCapture = position->enPassantCapture;
-
         // make move
         if (position->isEngineMove)
         {

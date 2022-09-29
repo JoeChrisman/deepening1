@@ -40,6 +40,10 @@ public:
     // not sure how it will ever be used. But it is a part of FEN specification
     int fullMoves;
 
+    // a negative value when the player is winning
+    // a positive value when the engine is winning
+    int materialScore;
+
     // some extra information about the position
     Bitboard empties;
     Bitboard occupied;
@@ -96,6 +100,8 @@ public:
         // if we captured something
         if (move.captured != NONE)
         {
+            // subtract some material score if we captured a piece
+            materialScore -= PIECE_SCORES[move.captured];
             // captures are irreversible moves
             halfMoveClock = 0;
             // if we captured en-passant
@@ -171,21 +177,26 @@ public:
             if (move.type == QUEEN_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_QUEEN: PLAYER_QUEEN] ^= to;
+                materialScore += PIECE_SCORES[isEngine ? ENGINE_QUEEN: PLAYER_QUEEN];
             }
             // if we promoted to a knight
             else if (move.type == KNIGHT_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT] ^= to;
+                materialScore += PIECE_SCORES[isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT];
             }
             // if we promoted to a rook
             else if (move.type == ROOK_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_ROOK: PLAYER_ROOK] ^= to;
+                materialScore += PIECE_SCORES[isEngine ? ENGINE_ROOK: PLAYER_ROOK];
             }
             // if we promoted to a bishop
             else if (move.type == BISHOP_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_BISHOP: PLAYER_BISHOP] ^= to;
+                materialScore += PIECE_SCORES[isEngine ? ENGINE_BISHOP: PLAYER_BISHOP];
+
             }
         }
         // if we did not make a promotion
@@ -292,6 +303,8 @@ public:
         {
             // restore captured piece
             pieces[move.captured] ^= to;
+            // add back some material score if we are un-capturing a piece
+            materialScore += PIECE_SCORES[move.captured];
         }
         // if we want to undo a promotion
         if (move.type >= KNIGHT_PROMOTION)
@@ -300,21 +313,25 @@ public:
             if (move.type == QUEEN_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_QUEEN : PLAYER_QUEEN] ^= to;
+                materialScore -= PIECE_SCORES[isEngine ? ENGINE_QUEEN: PLAYER_QUEEN];
             }
             // remove our promoted knight
             else if (move.type == KNIGHT_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT] ^= to;
+                materialScore -= PIECE_SCORES[isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT];
             }
             // remove our promoted rook
             else if (move.type == ROOK_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK] ^= to;
+                materialScore -= PIECE_SCORES[isEngine ? ENGINE_ROOK: PLAYER_ROOK];
             }
             // remove our promoted bishop
             else if (move.type == BISHOP_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_BISHOP : PLAYER_BISHOP] ^= to;
+                materialScore -= PIECE_SCORES[isEngine ? ENGINE_BISHOP: PLAYER_BISHOP];
             }
         }
         // if we are not undoing promotion
