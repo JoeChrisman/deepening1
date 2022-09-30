@@ -20,6 +20,13 @@ public:
     Move getBestMove();
 
 private:
+    const int MAX_DEPTH = 100;
+
+    // keep track of how many seconds we spend doing an iterative deepening search.
+    // when the time is up, fall back onto the best move we found so far
+    const int MAX_ELAPSED = 4;
+    int startTime;
+
     Evaluator evaluator;
 
     /*
@@ -29,6 +36,17 @@ private:
      */
     int min(int ply, int maxDepth, int alpha, int beta);
     int max(int ply, int maxDepth, int alpha, int beta);
+
+    /*
+     * iterative deepening search.
+     * we search the tree depth first repeatedly, starting at depth 0
+     * and increasing, until a time given time restraint has been breached
+     * https://www.chessprogramming.org/Iterative_Deepening
+     * so far, there are no move ordering techniques implemented here, so this method
+     * will not provide an efficiency increase. later, we will add a transposition
+     * table so we can actually benefit from researching the top of the tree
+     */
+    Move iterate(int depth);
 
     /*
      * swap the best move in the move list that occurs after the given index
@@ -63,8 +81,6 @@ private:
         {
             bestScore = -1;
         }
-
-
         // find the index of the best capture after the given index
         for (int i = index + 1; i < moveList.size(); i++)
         {

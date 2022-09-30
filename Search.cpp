@@ -9,8 +9,8 @@ moveGen(position),
 position(position),
 evaluator(position)
 {
+    startTime = 0;
 }
-
 
 /*
  * when we minimise, we are making moves for the player.
@@ -143,33 +143,51 @@ int Search::max(int ply, int maxDepth, int alpha, int beta)
         }
     }
     return bestScore;
-
 }
 
 Move Search::getBestMove()
+{
+    Move bestMove{};
+    startTime = std::clock() / CLOCKS_PER_SEC;
+    // while we still have time to search
+    for (int depth = 0; depth <= MAX_DEPTH; depth++)
+    {
+        Move move = iterate(depth);
+        // if we ran out of time
+        if (move.moved == NONE)
+        {
+            break;
+        }
+        bestMove = move;
+    }
+    return bestMove;
+}
+
+Move Search::iterate(int depth)
 {
     moveGen.genEngineMoves();
     std::vector<Move> moveList = moveGen.moveList;
     // if the engine is in checkmate or stalemate
     if (moveList.empty())
     {
+        // deal with this stuff later
         assert(false);
-        // return an empty move
-        return Move{
-            NORMAL,
-            NULL_SQUARE,
-            NULL_SQUARE,
-            NONE,
-            NONE
-        };
     }
-
     Move bestMove{};
-    int bestScore = MIN_EVAL;
     int moveIndex = 0;
+    int bestScore = MIN_EVAL;
     while (selectMove(moveList, moveIndex))
     {
         Move move = moveList[moveIndex++];
+        // if we ran out of time during iterative deepening
+        if (clock() / CLOCKS_PER_SEC - startTime > MAX_ELAPSED)
+        {
+            // return a null move we can check for
+            Move nullMove;
+            nullMove.moved = NONE;
+            return nullMove;
+        }
+
         // make the move
         bool playerCastleKingside = position.playerCastleKingside;
         bool playerCastleQueenside = position.playerCastleQueenside;
@@ -178,14 +196,12 @@ Move Search::getBestMove()
         Bitboard enPassantCapture = position.enPassantCapture;
         position.makeMove<true>(move);
 
-        int score = min(1, 5, MIN_EVAL, MAX_EVAL);
+        int score = min(1, depth, MIN_EVAL, MAX_EVAL);
         if (score > bestScore)
         {
             bestScore = score;
             bestMove = move;
         }
-
-        std::cout << squares::toNotation(move) << ": " << score << std::endl;
 
         // unmake the move
         position.enPassantCapture = enPassantCapture;
@@ -195,5 +211,10 @@ Move Search::getBestMove()
         position.engineCastleQueenside = engineCastleQueenside;
         position.unMakeMove<true>(move);
     }
+    std::cout << "depth " << depth << " complete.\n";
+    std::cout << "move = " << squares::toNotation(bestMove) << std::endl;
+    std::cout << "score = " << bestScore << std::endl;
+    std::cout << "elapsed = " << std::clock() / CLOCKS_PER_SEC - startTime << std::endl;
+    std::cout << std::endl;
     return bestMove;
 }

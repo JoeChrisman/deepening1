@@ -10,6 +10,22 @@
 const int MAX_EVAL = 1000000000;
 const int MIN_EVAL = -1000000000;
 
+const int PIECE_SCORES[13] = {
+        100, // PLAYER_PAWN
+        350, // PLAYER_KNIGHT
+        400, // PLAYER_BISHOP
+        550, // PLAYER_ROOK
+        1000, // PLAYER_QUEEN
+        0, // PLAYER_KING
+        100, // ENGINE_PAWN
+        350, // ENGINE_KNIGHT
+        400, // ENGINE_BISHOP
+        550, // ENGINE_ROOK
+        1000, // ENGINE_QUEEN
+        0, // ENGINE_KING
+        0 // NONE
+};
+
 class Evaluator
 {
 
