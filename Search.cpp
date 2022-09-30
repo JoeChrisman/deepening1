@@ -148,8 +148,6 @@ int Search::max(int ply, int maxDepth, int alpha, int beta)
 
 Move Search::getBestMove()
 {
-    std::cout << "advantage: " << position.materialScore << std::endl;
-
     moveGen.genEngineMoves();
     std::vector<Move> moveList = moveGen.moveList;
     // if the engine is in checkmate or stalemate

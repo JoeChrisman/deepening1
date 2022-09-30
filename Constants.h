@@ -7,7 +7,7 @@
 
 const int WINDOW_SIZE = 800;
 const int SQUARE_SIZE = WINDOW_SIZE / 8;
-const bool ENGINE_IS_WHITE = false;
+const bool ENGINE_IS_WHITE = true;
 
 const int DARK_SQUARE_COLOR = 0x222222;
 const int LIGHT_SQUARE_COLOR = 0x777777;
@@ -17,16 +17,16 @@ const int PREVIOUS_MOVE_COLOR = 0x99ff99;
 
 const int PIECE_SCORES[13] = {
     100, // PLAYER_PAWN
-    450, // PLAYER_KNIGHT
-    500, // PLAYER_BISHOP
-    650, // PLAYER_ROOK
-    900, // PLAYER_QUEEN
+    350, // PLAYER_KNIGHT
+    400, // PLAYER_BISHOP
+    550, // PLAYER_ROOK
+    1000, // PLAYER_QUEEN
     0, // PLAYER_KING
     100, // ENGINE_PAWN
-    450, // ENGINE_KNIGHT
-    500, // ENGINE_BISHOP
-    650, // ENGINE_ROOK
-    900, // ENGINE_QUEEN
+    350, // ENGINE_KNIGHT
+    400, // ENGINE_BISHOP
+    550, // ENGINE_ROOK
+    1000, // ENGINE_QUEEN
     0, // ENGINE_KING
     0 // NONE
 };
