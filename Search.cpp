@@ -148,7 +148,8 @@ int Search::max(int ply, int maxDepth, int alpha, int beta)
 Move Search::getBestMove()
 {
     Move bestMove{};
-    startTime = std::clock() / CLOCKS_PER_SEC;
+    /*
+    startTime = std::clock() * 1000 / CLOCKS_PER_SEC;
     // while we still have time to search
     for (int depth = 0; depth <= MAX_DEPTH; depth++)
     {
@@ -159,8 +160,10 @@ Move Search::getBestMove()
             break;
         }
         bestMove = move;
-    }
-    return bestMove;
+    }*/
+    startTime = std::clock() * 1000 / CLOCKS_PER_SEC;
+    return iterate(5);
+    //return bestMove;
 }
 
 Move Search::iterate(int depth)
@@ -180,7 +183,7 @@ Move Search::iterate(int depth)
     {
         Move move = moveList[moveIndex++];
         // if we ran out of time during iterative deepening
-        if (clock() / CLOCKS_PER_SEC - startTime > MAX_ELAPSED)
+        if (clock() * 1000 / CLOCKS_PER_SEC - startTime > MAX_ELAPSED)
         {
             // return a null move we can check for
             Move nullMove;
@@ -211,10 +214,10 @@ Move Search::iterate(int depth)
         position.engineCastleQueenside = engineCastleQueenside;
         position.unMakeMove<true>(move);
     }
-    std::cout << "depth " << depth << " complete.\n";
-    std::cout << "move = " << squares::toNotation(bestMove) << std::endl;
-    std::cout << "score = " << bestScore << std::endl;
-    std::cout << "elapsed = " << std::clock() / CLOCKS_PER_SEC - startTime << std::endl;
-    std::cout << std::endl;
+    std::cout << "depth " << depth << " complete.";
+    std::cout << "\nmove = " << squares::toNotation(bestMove);
+    std::cout << "\nscore = " << bestScore;
+    std::cout << "\nelapsed = " << double(std::clock() * 1000 / CLOCKS_PER_SEC - startTime) / 1000;
+    std::cout << "\n\n";
     return bestMove;
 }

@@ -22,9 +22,9 @@ public:
 private:
     const int MAX_DEPTH = 100;
 
-    // keep track of how many seconds we spend doing an iterative deepening search.
+    // keep track of how many milliseconds we spend doing an iterative deepening search.
     // when the time is up, fall back onto the best move we found so far
-    const int MAX_ELAPSED = 4;
+    const int MAX_ELAPSED = 40000;
     int startTime;
 
     Evaluator evaluator;

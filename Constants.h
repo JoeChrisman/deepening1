@@ -7,7 +7,7 @@
 
 const int WINDOW_SIZE = 800;
 const int SQUARE_SIZE = WINDOW_SIZE / 8;
-const bool ENGINE_IS_WHITE = true;
+const bool ENGINE_IS_WHITE = false;
 
 const int DARK_SQUARE_COLOR = 0x222222;
 const int LIGHT_SQUARE_COLOR = 0x777777;
