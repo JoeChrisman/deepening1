@@ -20,4 +20,4 @@ include_directories(${SDL_HEADERS})
 set(SDL_LINK /usr/local/Cellar/sdl2/2.0.16/lib/libSDL2-2.0.0.dylib)
 link_libraries(${SDL_LINK})
 
-add_executable(deepening1 main.cpp Constants.h ChessGame.cpp ChessGame.h Position.cpp Position.h MoveGen.cpp MoveGen.h Search.cpp Search.h Tests.cpp Tests.h Squares.h Types.h Squares.cpp Evaluator.cpp Evaluator.h)
+add_executable(deepening1 main.cpp Constants.h ChessGame.cpp ChessGame.h Position.cpp Position.h MoveGen.cpp MoveGen.h Search.cpp Search.h Tests.cpp Tests.h Squares.h Squares.cpp Evaluator.cpp Evaluator.h Zobrist.h Moves.h Moves.cpp)

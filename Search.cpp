@@ -19,6 +19,10 @@ evaluator(position)
  */
 int Search::min(int ply, int maxDepth, int alpha, int beta)
 {
+    if (repeated())
+    {
+        return CONTEMPT;
+    }
     if (ply > maxDepth)
     {
         return evaluator.evaluate();
@@ -46,22 +50,15 @@ int Search::min(int ply, int maxDepth, int alpha, int beta)
         Move& move = moveList[moveIndex++];
 
         // make the move
-        bool playerCastleKingside = position.playerCastleKingside;
-        bool playerCastleQueenside = position.playerCastleQueenside;
-        bool engineCastleKingside = position.engineCastleKingside;
-        bool engineCastleQueenside = position.engineCastleQueenside;
-        Bitboard enPassantCapture = position.enPassantCapture;
+        PositionRights rights = position.rights;
         position.makeMove<false>(move);
 
+        repetitions.push_back(position.hash);
         int score = max(ply + 1, maxDepth, alpha, beta);
+        repetitions.pop_back();
 
         // unmake the move
-        position.enPassantCapture = enPassantCapture;
-        position.playerCastleKingside = playerCastleKingside;
-        position.playerCastleQueenside = playerCastleQueenside;
-        position.engineCastleKingside = engineCastleKingside;
-        position.engineCastleQueenside = engineCastleQueenside;
-        position.unMakeMove<false>(move);
+        position.unMakeMove<false>(move, rights);
 
         if (score < bestScore)
         {
@@ -86,6 +83,10 @@ int Search::min(int ply, int maxDepth, int alpha, int beta)
  */
 int Search::max(int ply, int maxDepth, int alpha, int beta)
 {
+    if (repeated())
+    {
+        return CONTEMPT;
+    }
     if (ply > maxDepth)
     {
         return evaluator.evaluate();
@@ -112,22 +113,15 @@ int Search::max(int ply, int maxDepth, int alpha, int beta)
     {
         Move& move = moveList[moveIndex++];
         // make the move
-        bool playerCastleKingside = position.playerCastleKingside;
-        bool playerCastleQueenside = position.playerCastleQueenside;
-        bool engineCastleKingside = position.engineCastleKingside;
-        bool engineCastleQueenside = position.engineCastleQueenside;
-        Bitboard enPassantCapture = position.enPassantCapture;
+        PositionRights rights = position.rights;
         position.makeMove<true>(move);
 
+        repetitions.push_back(position.hash);
         int score = min(ply + 1, maxDepth, alpha, beta);
+        repetitions.pop_back();
 
         // unmake the move
-        position.enPassantCapture = enPassantCapture;
-        position.playerCastleKingside = playerCastleKingside;
-        position.playerCastleQueenside = playerCastleQueenside;
-        position.engineCastleKingside = engineCastleKingside;
-        position.engineCastleQueenside = engineCastleQueenside;
-        position.unMakeMove<true>(move);
+        position.unMakeMove<true>(move, rights);
 
         if (score > bestScore)
         {
@@ -148,10 +142,9 @@ int Search::max(int ply, int maxDepth, int alpha, int beta)
 Move Search::getBestMove()
 {
     Move bestMove{};
-    /*
     startTime = std::clock() * 1000 / CLOCKS_PER_SEC;
     // while we still have time to search
-    for (int depth = 0; depth <= MAX_DEPTH; depth++)
+    for (int depth = 0; depth <= 100; depth++)
     {
         Move move = iterate(depth);
         // if we ran out of time
@@ -160,10 +153,8 @@ Move Search::getBestMove()
             break;
         }
         bestMove = move;
-    }*/
-    startTime = std::clock() * 1000 / CLOCKS_PER_SEC;
-    return iterate(5);
-    //return bestMove;
+    }
+    return bestMove;
 }
 
 Move Search::iterate(int depth)
@@ -192,14 +183,13 @@ Move Search::iterate(int depth)
         }
 
         // make the move
-        bool playerCastleKingside = position.playerCastleKingside;
-        bool playerCastleQueenside = position.playerCastleQueenside;
-        bool engineCastleKingside = position.engineCastleKingside;
-        bool engineCastleQueenside = position.engineCastleQueenside;
-        Bitboard enPassantCapture = position.enPassantCapture;
+        PositionRights rights = position.rights;
         position.makeMove<true>(move);
 
+        repetitions.push_back(position.hash);
         int score = min(1, depth, MIN_EVAL, MAX_EVAL);
+        repetitions.pop_back();
+
         if (score > bestScore)
         {
             bestScore = score;
@@ -207,15 +197,10 @@ Move Search::iterate(int depth)
         }
 
         // unmake the move
-        position.enPassantCapture = enPassantCapture;
-        position.playerCastleKingside = playerCastleKingside;
-        position.playerCastleQueenside = playerCastleQueenside;
-        position.engineCastleKingside = engineCastleKingside;
-        position.engineCastleQueenside = engineCastleQueenside;
-        position.unMakeMove<true>(move);
+        position.unMakeMove<true>(move, rights);
     }
     std::cout << "depth " << depth << " complete.";
-    std::cout << "\nmove = " << squares::toNotation(bestMove);
+    std::cout << "\nmove = " << moves::toNotation(bestMove);
     std::cout << "\nscore = " << bestScore;
     std::cout << "\nelapsed = " << double(std::clock() * 1000 / CLOCKS_PER_SEC - startTime) / 1000;
     std::cout << "\n\n";

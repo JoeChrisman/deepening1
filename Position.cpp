@@ -10,6 +10,7 @@ Position::Position(std::string fen)
 {
     // initialize pieces
     pieces = std::vector<Bitboard>(12);
+    hash = 0x0000000000000000;
     // set up the board
     readFen(fen);
     updateBitboards();
@@ -96,36 +97,111 @@ void Position::readFen(const std::string& fen)
         }
         else
         {
-            Bitboard board = toBoard(getSquare(rank, file));
-            switch (c)
+            Square square = getSquare(rank, file);
+            Bitboard piece = toBoard(square);
+
+            if (c == 'P')
             {
-                case 'p': pieces[ENGINE_IS_WHITE ? PLAYER_PAWN : ENGINE_PAWN] |= board; break;
-                case 'P': pieces[ENGINE_IS_WHITE ? ENGINE_PAWN : PLAYER_PAWN] |= board; break;
-                case 'n': pieces[ENGINE_IS_WHITE ? PLAYER_KNIGHT : ENGINE_KNIGHT] |= board; break;
-                case 'N': pieces[ENGINE_IS_WHITE ? ENGINE_KNIGHT : PLAYER_KNIGHT] |= board; break;
-                case 'b': pieces[ENGINE_IS_WHITE ? PLAYER_BISHOP : ENGINE_BISHOP] |= board; break;
-                case 'B': pieces[ENGINE_IS_WHITE ? ENGINE_BISHOP : PLAYER_BISHOP] |= board; break;
-                case 'r': pieces[ENGINE_IS_WHITE ? PLAYER_ROOK : ENGINE_ROOK] |= board; break;
-                case 'R': pieces[ENGINE_IS_WHITE ? ENGINE_ROOK : PLAYER_ROOK] |= board; break;
-                case 'q': pieces[ENGINE_IS_WHITE ? PLAYER_QUEEN : ENGINE_QUEEN] |= board; break;
-                case 'Q': pieces[ENGINE_IS_WHITE ? ENGINE_QUEEN : PLAYER_QUEEN] |= board; break;
-                case 'k': pieces[ENGINE_IS_WHITE ? PLAYER_KING : ENGINE_KING] |= board; break;
-                case 'K': pieces[ENGINE_IS_WHITE ? ENGINE_KING : PLAYER_KING] |= board; break;
-                default: assert(false); // invalid FEN string
+                pieces[ENGINE_IS_WHITE ? ENGINE_PAWN : PLAYER_PAWN] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][ENGINE_IS_WHITE ? ENGINE_PAWN : PLAYER_PAWN];
+            }
+            else if (c == 'N')
+            {
+                pieces[ENGINE_IS_WHITE ? ENGINE_KNIGHT : PLAYER_KNIGHT] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][ENGINE_IS_WHITE ? ENGINE_KNIGHT : PLAYER_KNIGHT];
+            }
+            else if (c == 'B')
+            {
+                pieces[ENGINE_IS_WHITE ? ENGINE_BISHOP : PLAYER_BISHOP] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][ENGINE_IS_WHITE ? ENGINE_BISHOP : PLAYER_BISHOP];
+            }
+            else if (c == 'R')
+            {
+                 pieces[ENGINE_IS_WHITE ? ENGINE_ROOK : PLAYER_ROOK] |= piece;
+                 hash ^= SQUARE_PIECE_KEYS[square][ENGINE_IS_WHITE ? ENGINE_ROOK : PLAYER_ROOK];
+            }
+            else if (c == 'Q')
+            {
+                pieces[ENGINE_IS_WHITE ? ENGINE_QUEEN : PLAYER_QUEEN] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][ENGINE_IS_WHITE ? ENGINE_QUEEN : PLAYER_QUEEN];
+            }
+            else if (c == 'K')
+            {
+                pieces[ENGINE_IS_WHITE ? ENGINE_KING : PLAYER_KING] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][ENGINE_IS_WHITE ? ENGINE_KING : PLAYER_KING];
+            }
+            else if (c == 'p')
+            {
+                pieces[!ENGINE_IS_WHITE ? ENGINE_PAWN : PLAYER_PAWN] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][!ENGINE_IS_WHITE ? ENGINE_PAWN : PLAYER_PAWN];
+            }
+            else if (c == 'n')
+            {
+                pieces[!ENGINE_IS_WHITE ? ENGINE_KNIGHT : PLAYER_KNIGHT] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][!ENGINE_IS_WHITE ? ENGINE_KNIGHT : PLAYER_KNIGHT];
+            }
+            else if (c == 'b')
+            {
+                pieces[!ENGINE_IS_WHITE ? ENGINE_BISHOP : PLAYER_BISHOP] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][!ENGINE_IS_WHITE ? ENGINE_BISHOP : PLAYER_BISHOP];
+            }
+            else if (c == 'r')
+            {
+                pieces[!ENGINE_IS_WHITE ? ENGINE_ROOK : PLAYER_ROOK] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][!ENGINE_IS_WHITE ? ENGINE_ROOK : PLAYER_ROOK];
+            }
+            else if (c == 'q')
+            {
+                pieces[!ENGINE_IS_WHITE ? ENGINE_QUEEN : PLAYER_QUEEN] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][!ENGINE_IS_WHITE ? ENGINE_QUEEN : PLAYER_QUEEN];
+            }
+            else if (c == 'k')
+            {
+                pieces[!ENGINE_IS_WHITE ? ENGINE_KING : PLAYER_KING] |= piece;
+                hash ^= SQUARE_PIECE_KEYS[square][!ENGINE_IS_WHITE ? ENGINE_KING : PLAYER_KING];
+            }
+            else
+            {
+                // invalid FEN string
+                assert(false);
             }
             file++;
         }
     }
 
     isEngineMove = fields[1].find(ENGINE_IS_WHITE ? 'w' : 'b') != std::string::npos;
+    if (isEngineMove)
+    {
+        hash ^= ENGINE_TO_MOVE_KEY;
+    }
 
-    engineCastleKingside = fields[2].find(ENGINE_IS_WHITE ? 'K' : 'k') != std::string::npos;
-    engineCastleQueenside = fields[2].find(ENGINE_IS_WHITE ? 'Q' : 'q') != std::string::npos;
-    playerCastleKingside = fields[2].find(ENGINE_IS_WHITE ? 'k' : 'K') != std::string::npos;
-    playerCastleQueenside = fields[2].find(ENGINE_IS_WHITE ? 'q' : 'Q') != std::string::npos;
+    rights.engineCastleKingside = fields[2].find(ENGINE_IS_WHITE ? 'K' : 'k') != std::string::npos;
+    if (rights.engineCastleKingside)
+    {
+        hash ^= ENGINE_CASTLE_KINGSIDE_KEY;
+    }
+    rights.engineCastleQueenside = fields[2].find(ENGINE_IS_WHITE ? 'Q' : 'q') != std::string::npos;
+    if (rights.engineCastleQueenside)
+    {
+        hash ^= ENGINE_CASTLE_QUEENSIDE_KEY;
+    }
+    rights.playerCastleKingside = fields[2].find(ENGINE_IS_WHITE ? 'k' : 'K') != std::string::npos;
+    if (rights.playerCastleKingside)
+    {
+        hash ^= PLAYER_CASTLE_KINGSIDE_KEY;
+    }
+    rights.playerCastleQueenside = fields[2].find(ENGINE_IS_WHITE ? 'q' : 'Q') != std::string::npos;
+    if (rights.playerCastleQueenside)
+    {
+        hash ^= PLAYER_CASTLE_QUEENSIDE_KEY;
+    }
 
     Square enPassant = squares::toSquare(fields[3]);
-    enPassantCapture = (enPassant != NULL_SQUARE) ? toBoard(enPassant) : EMPTY_BITBOARD;
+    rights.enPassantCapture = (enPassant != NULL_SQUARE) ? toBoard(enPassant) : EMPTY_BITBOARD;
+    if (enPassant != NULL_SQUARE)
+    {
+        hash ^= EN_PASSANT_KEYS[getFile(enPassant)];
+    }
 
     // if the half-move or full-move clocks are not given, atoi() will still be zero
     halfMoveClock = atoi(fields[4].c_str());

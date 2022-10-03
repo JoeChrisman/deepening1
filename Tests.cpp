@@ -74,13 +74,15 @@ int Tests::runPerft(int depth, const std::string& fen)
     int numLeaves = 0;
 
     double start = std::clock();
+    Zobrist hashBefore = position->hash;
     perft(depth, numLeaves);
     double elapsed = (std::clock() - start) / CLOCKS_PER_SEC;
 
     std::cout << "*\t depth " << depth << ":\n";
     std::cout << "*\t\t seconds elapsed ---> " << elapsed << std::endl;
     std::cout << "*\t\t leaf nodes      ---> " << numLeaves << std::endl;
-
+    std::cout << "*\t\t hash            ---> " << position->hash << std::endl;
+    assert(position->hash == hashBefore);
     return numLeaves;
 }
 
@@ -89,7 +91,7 @@ int Tests::runPerft(int depth, const std::string& fen)
  * it generates all legal moves from each position until a certain depth is reached.
  * when that depth is hit, we add the number of leaf nodes to a sum.
  * we can then compare the number of leaf nodes to a known value to assert complete move generation accuracy.
- * notice, we do not count stalemate or checkmate nodes as leaf nodes. this is because this follows the
+ * notice we do not count stalemate or checkmate nodes as leaf nodes. this is because this follows the
  * definition of what a perft test is.
  * https://www.chessprogramming.org/Perft
  */
@@ -113,11 +115,7 @@ void Tests::perft(int depth, int& numLeafNodes)
     std::vector<Move> moveList = moveGen->moveList;
     for (Move& move : moveList)
     {
-        bool playerCastleKingside = position->playerCastleKingside;
-        bool playerCastleQueenside = position->playerCastleQueenside;
-        bool engineCastleKingside = position->engineCastleKingside;
-        bool engineCastleQueenside = position->engineCastleQueenside;
-        Bitboard enPassantCapture = position->enPassantCapture;
+        PositionRights rights = position->rights;
         // make move
         if (position->isEngineMove)
         {
@@ -130,18 +128,13 @@ void Tests::perft(int depth, int& numLeafNodes)
         perft(depth - 1, numLeafNodes);
 
         // unmake move
-        position->enPassantCapture = enPassantCapture;
-        position->playerCastleKingside = playerCastleKingside;
-        position->playerCastleQueenside = playerCastleQueenside;
-        position->engineCastleKingside = engineCastleKingside;
-        position->engineCastleQueenside = engineCastleQueenside;
         if (position->isEngineMove)
         {
-            position->unMakeMove<false>(move);
+            position->unMakeMove<false>(move, rights);
         }
         else
         {
-            position->unMakeMove<true>(move);
+            position->unMakeMove<true>(move, rights);
         }
     }
 }

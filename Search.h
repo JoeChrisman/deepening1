@@ -17,17 +17,48 @@ public:
     MoveGen moveGen;
     Position& position;
 
+    /*
+     * a vector of zobrist hashes used for detecting draw by repetition.
+     * this vector can be cleared out whenever an irreversible move is made.
+     * when the engine or the player makes a move in the GUI (not in the search),
+     * we check if the move is irreversible, if it is, we can clear the repetitions vector.
+     * In the search, we push and pop positions from the repetitions vector, but never clear it
+     */
+    std::vector<Zobrist> repetitions;
     Move getBestMove();
 
-private:
-    const int MAX_DEPTH = 100;
+    // return true if we repeated a position three times
+    inline bool repeated()
+    {
+        if (!repetitions.empty())
+        {
+            // start at one, because we already have one instance of the current position
+            int numRepetitions = 1;
+            Zobrist repetition = repetitions[repetitions.size() - 1];
+            for (int i = 0; i < repetitions.size() - 1; i++)
+            {
+                if (repetitions[i] == repetition)
+                {
+                    if (++numRepetitions >= 3)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
-    // keep track of how many milliseconds we spend doing an iterative deepening search.
-    // when the time is up, fall back onto the best move we found so far
-    const int MAX_ELAPSED = 40000;
-    int startTime;
+private:
 
     Evaluator evaluator;
+
+    // keep track of how many milliseconds we spend doing an iterative deepening search.
+    const int MAX_ELAPSED = 8000;
+    int startTime;
+
+    // the engine should disadvantaged by 4 or more pawns in evaluation to want a draw
+    const int CONTEMPT = -PIECE_SCORES[ENGINE_PAWN] * 4;
 
     /*
      * depth first search using minimax algorithm with alpha beta pruning

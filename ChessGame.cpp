@@ -26,6 +26,9 @@ position(position)
     createBoard();
     updateBoard();
 
+    // remember the initial position for repetitions
+    search.repetitions.push_back(position.hash);
+
     // we are not deciding what piece to promote to
     isPromoting = false;
     // we have not decided what piece to promote to
@@ -418,17 +421,27 @@ void ChessGame::onMouseReleased(SDL_Point& mouse)
                     return;
                 }
                 clearHighlights();
-
                 // make the move
                 position.makeMove<false>(move);
-                // to remember what pieces are checking the king, if any
-                Bitboard checkers = search.moveGen.getCheckers<true>();
-
+                // if the move the player made was irreversible
+                if (moves::isIrreversible(move))
+                {
+                    // clear the repetitions list. we can never get the old position again
+                    search.repetitions.clear();
+                }
+                // the player played a draw by threefold repetition
+                if (search.repeated())
+                {
+                    // deal with this later
+                    assert(false);
+                }
+                // remember the position the player played
+                search.repetitions.push_back(position.hash);
                 // set previous move highlights
                 board[draggingTo].isPreviousMove = true;
                 board[draggingFrom].isPreviousMove = true;
-
                 // if we are in check, highlight our king
+                Bitboard checkers = search.moveGen.getCheckers<true>();
                 board[toSquare(position.pieces[position.isEngineMove ? ENGINE_KING : PLAYER_KING])].isChecking = checkers;
                 // highlight the pieces checking our king
                 while (checkers)
@@ -504,6 +517,20 @@ void ChessGame::run()
                 Move engineMove = search.getBestMove();
                 // play the move
                 search.moveGen.position.makeMove<true>(engineMove);
+                // if the engine move was irreversible
+                if (moves::isIrreversible(engineMove))
+                {
+                    // clear the repetitions list. we can never get the old position again
+                    search.repetitions.clear();
+                }
+                // if the engine played a draw by threefold repetition
+                if (search.repeated())
+                {
+                    // deal with this later
+                    assert(false);
+                }
+                // remember the position the engine played
+                search.repetitions.push_back(position.hash);
                 clearHighlights();
                 updateBoard();
                 // to remember what pieces are checking the engine king, if any

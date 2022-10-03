@@ -379,7 +379,7 @@ void MoveGen::genKingMoves()
         if (king & safeSquares)
         {
             // if the king is allowed to castle queenside
-            if (isEngine ? position.engineCastleQueenside : position.playerCastleQueenside)
+            if (isEngine ? position.rights.engineCastleQueenside : position.rights.playerCastleQueenside)
             {
                 // if there are no pieces in between the king and rook
                 if (!(QUEENSIDE_CASTLE_EMPTIES & (isEngine ? RANK_7 : RANK_0) & position.occupied))
@@ -400,7 +400,7 @@ void MoveGen::genKingMoves()
             }
 
             // if the king is allowed to castle kingside
-            if (isEngine ? position.engineCastleKingside : position.playerCastleKingside)
+            if (isEngine ? position.rights.engineCastleKingside : position.rights.playerCastleKingside)
             {
                 // if there are no pieces along the king's path and all the squares are safe
                 if (!(KINGSIDE_CASTLE_CHECKS & (isEngine ? RANK_7 : RANK_0) & (position.occupied | ~safeSquares)))
@@ -549,7 +549,7 @@ void MoveGen::genPawnMoves()
          * land on the same square it captures on, so things that work well for other
          * moves like pin detection and blocker detection need special cases
          */
-        Bitboard enPassant = captures & position.enPassantCapture;
+        Bitboard enPassant = captures & position.rights.enPassantCapture;
         // throw away pawn captures that leave the king in check
         captures &= resolverSquares;
         // make sure we can only capture enemy pieces
@@ -598,7 +598,7 @@ void MoveGen::genPawnMoves()
              * special manual pin detection for en passant captures
              */
             // start with removing the pawn we are capturing by en-passant
-            Bitboard enPassantSquare = isEngine ? north(position.enPassantCapture) : south(position.enPassantCapture);
+            Bitboard enPassantSquare = isEngine ? north(position.rights.enPassantCapture) : south(position.rights.enPassantCapture);
             position.occupied ^= enPassantSquare;
             /*
              * get cardinal sliding attacks outward from the pawn we are capturing with,
