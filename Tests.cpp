@@ -19,14 +19,14 @@ void Tests::perftSuite()
     assert(runPerft(3, POS_1) == 8902);
     assert(runPerft(4, POS_1) == 197281);
     assert(runPerft(5, POS_1) == 4865609);
-    assert(runPerft(6, POS_1) == 119060324); // ~11 secs
+    assert(runPerft(6, POS_1) == 119060324); // ~14 secs
 
     std::cout << "* running perft test for position 2: \"" << POS_2 << "\"\n";
     assert(runPerft(1, POS_2) == 48);
     assert(runPerft(2, POS_2) == 2039);
     assert(runPerft(3, POS_2) == 97862);
     assert(runPerft(4, POS_2) == 4085603);
-    assert(runPerft(5, POS_2) == 193690690); // ~15 secs
+    assert(runPerft(5, POS_2) == 193690690); // ~16 secs
 
     std::cout << "* running perft test for position 3: \"" << POS_3 << "\"\n";
     assert(runPerft(1, POS_3) == 14);
@@ -35,7 +35,7 @@ void Tests::perftSuite()
     assert(runPerft(4, POS_3) == 43238);
     assert(runPerft(5, POS_3) == 674624);
     assert(runPerft(6, POS_3) == 11030083);
-    assert(runPerft(7, POS_3) == 178633661); // ~17 secs
+    assert(runPerft(7, POS_3) == 178633661); // ~18.5 secs
 
     std::cout << "* running perft test for position 4: \"" << POS_4 << "\"\n";
     assert(runPerft(1, POS_4) == 6);
@@ -49,16 +49,16 @@ void Tests::perftSuite()
     assert(runPerft(2, POS_5) == 1486);
     assert(runPerft(3, POS_5) == 62379);
     assert(runPerft(4, POS_5) == 2103487);
-    assert(runPerft(5, POS_5) == 89941194); // ~7 secs
+    assert(runPerft(5, POS_5) == 89941194); // ~9.5 secs
 
     std::cout << "* running perft test for position 6: \"" << POS_6 << "\"\n";
     assert(runPerft(1, POS_6) == 46);
     assert(runPerft(2, POS_6) == 2079);
     assert(runPerft(3, POS_6) == 89890);
     assert(runPerft(4, POS_6) == 3894594);
-    assert(runPerft(5, POS_6) == 164075551); // ~13 secs
+    assert(runPerft(5, POS_6) == 164075551); // ~13.5 secs
 
-    // ~65 secs
+    // ~75 secs
     std::cout << "* perft suite run terminated." << std::endl;
     std::cout << "* " << (clock() - start) / CLOCKS_PER_SEC << " seconds elapsed." << std::endl;
 

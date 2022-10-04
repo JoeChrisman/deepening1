@@ -204,6 +204,6 @@ void Position::readFen(const std::string& fen)
     }
 
     // if the half-move or full-move clocks are not given, atoi() will still be zero
-    halfMoveClock = atoi(fields[4].c_str());
+    rights.halfMoveClock = atoi(fields[4].c_str());
     fullMoves = atoi(fields[5].c_str());
 }

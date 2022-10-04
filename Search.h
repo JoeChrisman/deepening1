@@ -54,10 +54,10 @@ private:
     Evaluator evaluator;
 
     // keep track of how many milliseconds we spend doing an iterative deepening search.
-    const int MAX_ELAPSED = 8000;
+    const int MAX_ELAPSED = 6000;
     int startTime;
 
-    // the engine should disadvantaged by 4 or more pawns in evaluation to want a draw
+    // the engine should be disadvantaged by 4 or more pawns in evaluation to want a draw
     const int CONTEMPT = -PIECE_SCORES[ENGINE_PAWN] * 4;
 
     /*

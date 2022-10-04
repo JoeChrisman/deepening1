@@ -429,8 +429,8 @@ void ChessGame::onMouseReleased(SDL_Point& mouse)
                     // clear the repetitions list. we can never get the old position again
                     search.repetitions.clear();
                 }
-                // the player played a draw by threefold repetition
-                if (search.repeated())
+                // the player played a draw by threefold repetition or 50 move rule
+                if (search.repeated() || position.rights.halfMoveClock >= 50)
                 {
                     // deal with this later
                     assert(false);
@@ -523,8 +523,8 @@ void ChessGame::run()
                     // clear the repetitions list. we can never get the old position again
                     search.repetitions.clear();
                 }
-                // if the engine played a draw by threefold repetition
-                if (search.repeated())
+                // if the engine played a draw by threefold repetition or 50 move rule
+                if (search.repeated() || position.rights.halfMoveClock >= 50)
                 {
                     // deal with this later
                     assert(false);

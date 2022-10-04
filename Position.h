@@ -10,13 +10,30 @@
 #include "Moves.h"
 #include "Zobrist.h"
 
+/*
+ * in the search, we must rapidly make and unmake moves.
+ * we are able to figure out how to undo most things, like how
+ * to un-capture a piece, or un-promote, or move a piece back, but there are some limitations.
+ * this struct represents those limitations. we cannot undo the loss of castling rights because
+ * we cannot prove the last move caused the right to be lost. we cannot undo the loss of an en-passant
+ * opportunity because we cannot prove the last move caused that opportunity to disappear.
+ * Because of these problems, we create copies of this struct and store them on the stack during the search.
+ * then we pass the old rights to the undo function, and we can easily bring the board back
+ * to its original state, including castling rights and en passant rights
+ */
 struct PositionRights
 {
     bool playerCastleKingside;
     bool playerCastleQueenside;
     bool engineCastleKingside;
     bool engineCastleQueenside;
+
+    // the square we can move a pawn to in order to capture en passant
     Bitboard enPassantCapture;
+
+    // the number of half moves that have been played since the last reversible move.
+    // used for enforcing the draw by fifty move rule
+    int halfMoveClock;
 };
 
 class Position
@@ -34,10 +51,6 @@ public:
     PositionRights rights;
 
     bool isEngineMove;
-
-    // the number of half moves have been played since the last reversible move.
-    // used for enforcing the draw by fifty move rule
-    int halfMoveClock;
 
     // the number of full moves (ex. e4 e5) have been played so far.
     // not sure how it will ever be used. But it is a part of FEN specification
@@ -93,6 +106,8 @@ public:
     template<bool isEngine>
     void makeMove(Move& move)
     {
+        rights.halfMoveClock++;
+
         Bitboard to = toBoard(move.to);
         Bitboard from = toBoard(move.from);
 
@@ -110,7 +125,7 @@ public:
         if (move.captured != NONE)
         {
             // captures are irreversible moves
-            halfMoveClock = 0;
+            rights.halfMoveClock = 0;
             // if we captured en-passant
             if (move.type == EN_PASSANT)
             {
@@ -137,7 +152,7 @@ public:
                             (ENGINE_IS_WHITE ? rights.playerCastleKingside : rights.playerCastleQueenside) = false;
                             hash ^= ENGINE_IS_WHITE ? PLAYER_CASTLE_KINGSIDE_KEY : PLAYER_CASTLE_QUEENSIDE_KEY;
                         }
-                            // if we captured a player rook on its initial square
+                        // if we captured a player rook on its initial square
                         else if (move.to == H1 && (ENGINE_IS_WHITE ? rights.playerCastleQueenside : rights.playerCastleKingside))
                         {
                             // forbid the player from using that rook to castle
@@ -166,7 +181,7 @@ public:
                 }
             }
         }
-        // reset en passant capture because it is now illegal if we did not just play it
+        // reset en passant capture because it is now illegal one move after
         if (rights.enPassantCapture)
         {
             // remove the en passant capture option
@@ -177,7 +192,7 @@ public:
         if ((move.moved == (isEngine ? ENGINE_PAWN : PLAYER_PAWN)) && move.captured == NONE)
         {
             // pawn moves are irreversible moves
-            halfMoveClock = 0;
+            rights.halfMoveClock = 0;
             // if we made a double push pawn move
             if (abs(move.to - move.from) > 8)
             {
@@ -191,7 +206,7 @@ public:
         if (move.type >= KNIGHT_PROMOTION)
         {
             // promotions are irreversible moves
-            halfMoveClock = 0;
+            rights.halfMoveClock = 0;
             if (move.type == QUEEN_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_QUEEN: PLAYER_QUEEN] ^= to;
@@ -307,11 +322,9 @@ public:
 
     /*
      * un-make a move on the board. This function will restore the board state
-     * to the exact way it was before the given move was made, except for these things:
-     * 1) castling rights
-     * 2) en passant capture square
-     * 3) half move clock for 50 move rule
-     * these things will have to be stored on the call stack during the search
+     * to the exact way it was before the given move was made. PreviousRights is
+     * a copy of the original position's rights. this makes it possible to undo
+     * things like losing the right to castle.
      */
     template<bool isEngine>
     void unMakeMove(Move& move, PositionRights& previousRights)
@@ -359,13 +372,14 @@ public:
             {
                 hash ^= EN_PASSANT_KEYS[getFile(toSquare(rights.enPassantCapture))];
             }
-            // if we had an en passant opportunity two moves ago, remove it from the hash
+            // if our last move erased an en passant opportunity, bring it back to the hash
             if (previousRights.enPassantCapture)
             {
                 hash ^= EN_PASSANT_KEYS[getFile(toSquare(previousRights.enPassantCapture))];
             }
             rights.enPassantCapture = previousRights.enPassantCapture;
         }
+        rights.halfMoveClock = previousRights.halfMoveClock;
 
         // if we want to undo an en-passant capture
         if (move.type == EN_PASSANT)

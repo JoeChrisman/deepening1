@@ -19,7 +19,7 @@ evaluator(position)
  */
 int Search::min(int ply, int maxDepth, int alpha, int beta)
 {
-    if (repeated())
+    if (repeated() || position.rights.halfMoveClock >= 50)
     {
         return CONTEMPT;
     }
@@ -83,7 +83,7 @@ int Search::min(int ply, int maxDepth, int alpha, int beta)
  */
 int Search::max(int ply, int maxDepth, int alpha, int beta)
 {
-    if (repeated())
+    if (repeated() || position.rights.halfMoveClock >= 50)
     {
         return CONTEMPT;
     }
