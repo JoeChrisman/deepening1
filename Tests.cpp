@@ -6,13 +6,59 @@
 
 Tests::Tests()
 {
-    perftSuite();
+    tacticSuite();
+}
+
+void Tests::tacticSuite()
+{
+    std::cout << "* tactical suite run initialized\n";
+    // fork tactics winning material
+    assert(runGetBestMove(FORK_1, 500).to == E2);
+    assert(runGetBestMove(FORK_2, 500).to == D3);
+    assert(runGetBestMove(FORK_3, 500).to == C2);
+    assert(runGetBestMove(FORK_4, 1500).to == E1);
+    assert(runGetBestMove(FORK_5, 500).to == E4);
+
+    // pin tactics winning material
+    assert(runGetBestMove(PIN_1, 500).to == F5);
+    assert(runGetBestMove(PIN_2, 500).to == E8);
+    assert(runGetBestMove(PIN_3, 500).to == E8);
+    assert(runGetBestMove(PIN_4, 500).to == G7);
+    assert(runGetBestMove(PIN_5, 500).to == C6);
+
+    // skewer tactics winning material
+    assert(runGetBestMove(SKEWER_1, 500).to == A1);
+    assert(runGetBestMove(SKEWER_2, 500).to == F6);
+    assert(runGetBestMove(SKEWER_3, 500).to == E8);
+    assert(runGetBestMove(SKEWER_4, 500).to == B6);
+    assert(runGetBestMove(SKEWER_5, 1500).to == C5);
+
+    // tactics relying on checkmates that win material
+    assert(runGetBestMove(MATE_TACTIC_1, 500).to == E7);
+    assert(runGetBestMove(MATE_TACTIC_2, 1000).to == G8);
+    assert(runGetBestMove(MATE_TACTIC_3, 500).to == C1);
+    assert(runGetBestMove(MATE_TACTIC_4, 1000).to == E8);
+    assert(runGetBestMove(MATE_TACTIC_5, 500).to == G5);
+
+    // forced checkmates
+    assert(runGetBestMove(MATE_1, 500).to == B2);
+    assert(runGetBestMove(MATE_2, 500).to == C2);
+    assert(runGetBestMove(MATE_3, 500).to == D1);
+    assert(runGetBestMove(MATE_4, 500).to == E1);
+    assert(runGetBestMove(MATE_5, 500).to == G1);
+    assert(runGetBestMove(MATE_6, 500).to == C3);
+    assert(runGetBestMove(MATE_7, 1500).to == H2);
+    assert(runGetBestMove(MATE_8, 1000).to == F3);
+    assert(runGetBestMove(MATE_9, 2500).to == F3);
+    assert(runGetBestMove(MATE_10, 1000).to == C2);
+
+    std::cout << "* tactical suite run terminated.\n";
 }
 
 void Tests::perftSuite()
 {
     double start = clock();
-    std::cout << "* perft suite run initialized" << std::endl;
+    std::cout << "* perft suite run initialized\n";
     std::cout << "* running perft test for position 1: \"" << POS_1 << "\"\n";
     assert(runPerft(1, POS_1) == 20);
     assert(runPerft(2, POS_1) == 400);
@@ -59,13 +105,25 @@ void Tests::perftSuite()
     assert(runPerft(5, POS_6) == 164075551); // ~13.5 secs
 
     // ~75 secs
-    std::cout << "* perft suite run terminated." << std::endl;
-    std::cout << "* " << (clock() - start) / CLOCKS_PER_SEC << " seconds elapsed." << std::endl;
+    std::cout << "* perft suite run terminated.\n";
+    std::cout << "* " << (clock() - start) / CLOCKS_PER_SEC << " seconds elapsed.\n";
 
 }
 
-// this function will run a complete perft test for a given depth and position.
-int Tests::runPerft(int depth, const std::string& fen)
+Move Tests::runGetBestMove(std::string fen, int maxElapsed)
+{
+    std::cout << "* running tactical test for position FEN: \"" << fen << "\"\n";
+    position = new Position(fen);
+    search = new Search(*(position));
+    moveGen = &search->moveGen;
+
+    Move bestMove = search->getBestMove(maxElapsed);
+    std::cout << "*\t move found: " << moves::toNotation(bestMove) << std::endl;
+    return search->getBestMove(maxElapsed);
+}
+
+// runs a complete perft test for a given depth and position.
+int Tests::runPerft(int depth, std::string fen)
 {
     position = new Position(fen);
     search = new Search(*(position));

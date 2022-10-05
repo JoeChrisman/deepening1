@@ -513,8 +513,8 @@ void ChessGame::run()
             // if it is the engine's turn
             if (position.isEngineMove)
             {
-                // spend potentially many seconds calculating a move...
-                Move engineMove = search.getBestMove();
+                // spend six seconds calculating a move...
+                Move engineMove = search.getBestMove(6000);
                 // play the move
                 search.moveGen.position.makeMove<true>(engineMove);
                 // if the engine move was irreversible

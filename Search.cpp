@@ -11,11 +11,8 @@ evaluator(position)
 {
 }
 
-
 int Search::negamax(int ply, int goalPly, int alpha, int beta)
 {
-    nodesSearched++;
-
     bool isEngineMove = position.isEngineMove;
     if (repeated() || position.rights.halfMoveClock >= 50)
     {
@@ -34,10 +31,10 @@ int Search::negamax(int ply, int goalPly, int alpha, int beta)
         if (position.pieces[isEngineMove ? ENGINE_KING : PLAYER_KING] & moveGen.safeSquares)
         {
             // stalemate
-            return isEngineMove ? CONTEMPT : -CONTEMPT;;
+            return isEngineMove ? CONTEMPT : -CONTEMPT;
         }
         // checkmate
-        return isEngineMove ? MIN_EVAL + ply : MAX_EVAL - ply;
+        return isEngineMove ? MAX_EVAL - ply : MIN_EVAL + ply;
     }
 
     int bestScore = MIN_EVAL;
@@ -87,14 +84,14 @@ int Search::negamax(int ply, int goalPly, int alpha, int beta)
     return bestScore;
 }
 
-Move Search::getBestMove()
+Move Search::getBestMove(int maxElapsed)
 {
-    Move bestMove{};
-    startTime = std::clock() * 1000 / CLOCKS_PER_SEC;
+    Move bestMove;
+    int startTime = std::clock() * 1000 / CLOCKS_PER_SEC;
     // while we still have time to search
     for (int depth = 0; depth <= MAX_DEPTH; depth++)
     {
-        Move move = iterate(depth);
+        Move move = iterate(depth, startTime, maxElapsed);
         // if we ran out of time
         if (move.moved == NONE)
         {
@@ -105,10 +102,8 @@ Move Search::getBestMove()
     return bestMove;
 }
 
-Move Search::iterate(int depth)
+Move Search::iterate(int depth, int startTime, int maxElapsed)
 {
-    nodesSearched = 0;
-    std::cout << "initializing depth " << depth << " search.";
     moveGen.genEngineMoves();
     std::vector<Move> moveList = moveGen.moveList;
     // if the engine is in checkmate or stalemate
@@ -124,12 +119,11 @@ Move Search::iterate(int depth)
     {
         Move move = moveList[moveIndex++];
         // if we ran out of time during iterative deepening
-        if (clock() * 1000 / CLOCKS_PER_SEC - startTime > MAX_ELAPSED)
+        if (clock() * 1000 / CLOCKS_PER_SEC - startTime > maxElapsed)
         {
             // return a null move we can check for
             Move nullMove;
             nullMove.moved = NONE;
-            std::cout << "\ndepth " << depth << " ran out of time.\n";
             return nullMove;
         }
 
@@ -151,11 +145,5 @@ Move Search::iterate(int depth)
         // unmake the move
         position.unMakeMove<true>(move, rights);
     }
-    std::cout << "\ndepth " << depth << " complete.";
-    std::cout << "\nmove = " << moves::toNotation(bestMove);
-    std::cout << "\nscore = " << bestScore;
-    std::cout << "\nnodes = " << nodesSearched;
-    std::cout << "\nelapsed = " << double(std::clock() * 1000 / CLOCKS_PER_SEC - startTime) / 1000;
-    std::cout << "\n\n";
     return bestMove;
 }

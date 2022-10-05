@@ -14,9 +14,6 @@ public:
 
     Search(Position& position);
 
-    // some extra debug info
-    int nodesSearched;
-
     MoveGen moveGen;
     Position& position;
 
@@ -28,7 +25,7 @@ public:
      * In the search, we push and pop positions from the repetitions vector, but never clear it
      */
     std::vector<Zobrist> repetitions;
-    Move getBestMove();
+    Move getBestMove(int maxElapsed);
 
     // return true if we repeated a position three times
     inline bool repeated()
@@ -55,10 +52,6 @@ public:
 private:
 
     Evaluator evaluator;
-
-    // keep track of how many milliseconds we spend doing an iterative deepening search.
-    const int MAX_ELAPSED = 5000;
-    int startTime;
 
     // the engine should be disadvantaged by 4 or more pawns in evaluation to want a draw
     const int CONTEMPT = -PIECE_SCORES[ENGINE_PAWN] * 4;
@@ -93,7 +86,7 @@ private:
      * will not provide an efficiency increase. later, we will add a transposition
      * table so we can actually benefit from researching the top of the tree
      */
-    Move iterate(int depth);
+    Move iterate(int depth, int startTime, int maxElapsed);
 
     /*
      * swap the best move in the move list that occurs after the given index
