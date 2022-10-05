@@ -14,6 +14,9 @@ public:
 
     Search(Position& position);
 
+    // some extra debug info
+    int nodesSearched;
+
     MoveGen moveGen;
     Position& position;
 
@@ -54,19 +57,32 @@ private:
     Evaluator evaluator;
 
     // keep track of how many milliseconds we spend doing an iterative deepening search.
-    const int MAX_ELAPSED = 6000;
+    const int MAX_ELAPSED = 5000;
     int startTime;
 
     // the engine should be disadvantaged by 4 or more pawns in evaluation to want a draw
     const int CONTEMPT = -PIECE_SCORES[ENGINE_PAWN] * 4;
 
+    const int MAX_DEPTH = 100;
+
+    // a vector containing the best line during the previous iterative deepening search.
+    // this vector should be cleared when initializing iterative deepening for a new position
+    std::vector<Move> principalVariation;
+
     /*
-     * depth first search using minimax algorithm with alpha beta pruning
+     * depth first negamax search with alpha beta pruning.
+     * negamax is a simplified version of the minimax algorithm,
+     * that takes advantage of the fact that max(a, b) = -min(-a, -b)
+     * we play all moves for the engine, and then play all moves for the player,
+     * all the way until ply reaches the given goalPly.
+     * along the way, we keep track of a lower bound (alpha), and an upper bound (beta).
+     * we can use these bounds to prune large parts of the search tree, because we
+     * don't have to look for stronger refutations than a refutation we already found.
+     * https://www.chessprogramming.org/Negamax
      * https://www.chessprogramming.org/Minimax
      * https://www.chessprogramming.org/Alpha-Beta
      */
-    int min(int ply, int maxDepth, int alpha, int beta);
-    int max(int ply, int maxDepth, int alpha, int beta);
+    int negamax(int ply, int goalPly, int alpha, int beta);
 
     /*
      * iterative deepening search.

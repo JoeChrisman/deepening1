@@ -9,102 +9,35 @@ moveGen(position),
 position(position),
 evaluator(position)
 {
-    startTime = 0;
 }
 
-/*
- * when we minimise, we are making moves for the player.
- * when the player is winning, we have a negative evaluation.
- * so find the move with the lowest evaluation
- */
-int Search::min(int ply, int maxDepth, int alpha, int beta)
+
+int Search::negamax(int ply, int goalPly, int alpha, int beta)
 {
+    nodesSearched++;
+
+    bool isEngineMove = position.isEngineMove;
     if (repeated() || position.rights.halfMoveClock >= 50)
     {
-        return CONTEMPT;
+        return isEngineMove ? CONTEMPT : -CONTEMPT;
     }
-    if (ply > maxDepth)
+    if (ply >= goalPly)
     {
-        return evaluator.evaluate();
+        return isEngineMove ? evaluator.evaluate() : -evaluator.evaluate();
     }
-
-    moveGen.genPlayerMoves();
+    isEngineMove ? moveGen.genEngineMoves() : moveGen.genPlayerMoves();
     std::vector<Move> moveList = moveGen.moveList;
     // if there are no legal moves, it is either checkmate or stalemate
     if (moveList.empty())
     {
         // if the king is safe
-        if (position.pieces[PLAYER_KING] & moveGen.safeSquares)
+        if (position.pieces[isEngineMove ? ENGINE_KING : PLAYER_KING] & moveGen.safeSquares)
         {
             // stalemate
-            return 0;
+            return isEngineMove ? CONTEMPT : -CONTEMPT;;
         }
         // checkmate
-        return MAX_EVAL - ply;
-    }
-
-    int bestScore = MAX_EVAL;
-    int moveIndex = 0;
-    while (selectMove(moveList, moveIndex))
-    {
-        Move& move = moveList[moveIndex++];
-
-        // make the move
-        PositionRights rights = position.rights;
-        position.makeMove<false>(move);
-
-        repetitions.push_back(position.hash);
-        int score = max(ply + 1, maxDepth, alpha, beta);
-        repetitions.pop_back();
-
-        // unmake the move
-        position.unMakeMove<false>(move, rights);
-
-        if (score < bestScore)
-        {
-            bestScore = score;
-        }
-        if (bestScore < beta)
-        {
-            beta = bestScore;
-        }
-        if (beta <= alpha)
-        {
-            break;
-        }
-    }
-    return bestScore;
-}
-
-/*
- * when we maximise, we are making moves for the engine.
- * when the engine is winning, we have a positive evaluation.
- * so find the move with the highest evaluation
- */
-int Search::max(int ply, int maxDepth, int alpha, int beta)
-{
-    if (repeated() || position.rights.halfMoveClock >= 50)
-    {
-        return CONTEMPT;
-    }
-    if (ply > maxDepth)
-    {
-        return evaluator.evaluate();
-    }
-
-    moveGen.genEngineMoves();
-    std::vector<Move> moveList = moveGen.moveList;
-    // if there are no legal moves, it is either checkmate or stalemate
-    if (moveList.empty())
-    {
-        // if the king is safe
-        if (position.pieces[ENGINE_KING] & moveGen.safeSquares)
-        {
-            // stalemate
-            return 0;
-        }
-        // checkmate
-        return MIN_EVAL + ply;
+        return isEngineMove ? MIN_EVAL + ply : MAX_EVAL - ply;
     }
 
     int bestScore = MIN_EVAL;
@@ -112,16 +45,31 @@ int Search::max(int ply, int maxDepth, int alpha, int beta)
     while (selectMove(moveList, moveIndex))
     {
         Move& move = moveList[moveIndex++];
+
         // make the move
         PositionRights rights = position.rights;
-        position.makeMove<true>(move);
+        if (isEngineMove)
+        {
+            position.makeMove<true>(move);
+        }
+        else
+        {
+            position.makeMove<false>(move);
+        }
 
         repetitions.push_back(position.hash);
-        int score = min(ply + 1, maxDepth, alpha, beta);
+        int score = -negamax(ply + 1, goalPly, -beta, -alpha);
         repetitions.pop_back();
 
         // unmake the move
-        position.unMakeMove<true>(move, rights);
+        if (isEngineMove)
+        {
+            position.unMakeMove<true>(move, rights);
+        }
+        else
+        {
+            position.unMakeMove<false>(move, rights);
+        }
 
         if (score > bestScore)
         {
@@ -131,9 +79,9 @@ int Search::max(int ply, int maxDepth, int alpha, int beta)
         {
             alpha = bestScore;
         }
-        if (beta <= alpha)
+        if (alpha >= beta)
         {
-            break;
+            return alpha;
         }
     }
     return bestScore;
@@ -144,7 +92,7 @@ Move Search::getBestMove()
     Move bestMove{};
     startTime = std::clock() * 1000 / CLOCKS_PER_SEC;
     // while we still have time to search
-    for (int depth = 0; depth <= 100; depth++)
+    for (int depth = 0; depth <= MAX_DEPTH; depth++)
     {
         Move move = iterate(depth);
         // if we ran out of time
@@ -159,6 +107,8 @@ Move Search::getBestMove()
 
 Move Search::iterate(int depth)
 {
+    nodesSearched = 0;
+    std::cout << "initializing depth " << depth << " search.";
     moveGen.genEngineMoves();
     std::vector<Move> moveList = moveGen.moveList;
     // if the engine is in checkmate or stalemate
@@ -179,6 +129,7 @@ Move Search::iterate(int depth)
             // return a null move we can check for
             Move nullMove;
             nullMove.moved = NONE;
+            std::cout << "\ndepth " << depth << " ran out of time.\n";
             return nullMove;
         }
 
@@ -187,7 +138,8 @@ Move Search::iterate(int depth)
         position.makeMove<true>(move);
 
         repetitions.push_back(position.hash);
-        int score = min(1, depth, MIN_EVAL, MAX_EVAL);
+        int score = -negamax(0, depth, MIN_EVAL, MAX_EVAL);
+
         repetitions.pop_back();
 
         if (score > bestScore)
@@ -199,9 +151,10 @@ Move Search::iterate(int depth)
         // unmake the move
         position.unMakeMove<true>(move, rights);
     }
-    std::cout << "depth " << depth << " complete.";
+    std::cout << "\ndepth " << depth << " complete.";
     std::cout << "\nmove = " << moves::toNotation(bestMove);
     std::cout << "\nscore = " << bestScore;
+    std::cout << "\nnodes = " << nodesSearched;
     std::cout << "\nelapsed = " << double(std::clock() * 1000 / CLOCKS_PER_SEC - startTime) / 1000;
     std::cout << "\n\n";
     return bestMove;
