@@ -16,7 +16,7 @@ int Search::negamax(int ply, int goalPly, int alpha, int beta)
     bool isEngineMove = position.isEngineMove;
     if (repeated() || position.rights.halfMoveClock >= 50)
     {
-        return isEngineMove ? CONTEMPT : -CONTEMPT;
+        return -CONTEMPT;
     }
     if (ply >= goalPly)
     {
@@ -31,10 +31,10 @@ int Search::negamax(int ply, int goalPly, int alpha, int beta)
         if (position.pieces[isEngineMove ? ENGINE_KING : PLAYER_KING] & moveGen.safeSquares)
         {
             // stalemate
-            return isEngineMove ? CONTEMPT : -CONTEMPT;
+            return -CONTEMPT;
         }
         // checkmate
-        return isEngineMove ? MAX_EVAL - ply : MIN_EVAL + ply;
+        return MIN_EVAL + ply;
     }
 
     int bestScore = MIN_EVAL;
