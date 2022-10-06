@@ -468,7 +468,7 @@ void ChessGame::run()
     while (true)
     {
         SDL_Event event;
-        if (SDL_PollEvent(&event))
+        if (SDL_WaitEvent(&event))
         {
             // if the user wants to close the window
             if (event.type == SDL_QUIT)
