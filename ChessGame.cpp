@@ -515,6 +515,17 @@ void ChessGame::run()
             {
                 // spend six seconds calculating a move...
                 Move engineMove = search.getBestMove(6000);
+                /*
+                 * we just spend many seconds searching for the best move.
+                 * meanwhile, the player might have been dragging the left mouse
+                 * button around, or clicking the squares on the board. Because
+                 * of this, we need to clear the even queue to prevent some graphical
+                 * bugs from happening, and to stop the user from accidentally dragging pieces
+                 * while the engine is still searching for the best move.
+                 * SDL_FlushEvents() does not seem to work... so i am stuck with the following solution.
+                 * TODO: find the real solution
+                 */
+                while (SDL_PollEvent(&event)) {}
                 // play the move
                 search.moveGen.position.makeMove<true>(engineMove);
                 // if the engine move was irreversible
