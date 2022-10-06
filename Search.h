@@ -58,6 +58,9 @@ private:
 
     const int MAX_DEPTH = 100;
 
+    int nodesSearched;
+    int nodesEvaluated;
+
     // a vector containing the best line during the previous iterative deepening search.
     // this vector should be cleared when initializing iterative deepening for a new position
     std::vector<Move> principalVariation;

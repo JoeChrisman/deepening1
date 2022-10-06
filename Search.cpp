@@ -13,6 +13,7 @@ evaluator(position)
 
 int Search::negamax(int ply, int goalPly, int alpha, int beta)
 {
+    nodesSearched++;
     bool isEngineMove = position.isEngineMove;
     if (repeated() || position.rights.halfMoveClock >= 50)
     {
@@ -20,6 +21,7 @@ int Search::negamax(int ply, int goalPly, int alpha, int beta)
     }
     if (ply >= goalPly)
     {
+        nodesEvaluated++;
         return isEngineMove ? evaluator.evaluate() : -evaluator.evaluate();
     }
     isEngineMove ? moveGen.genEngineMoves() : moveGen.genPlayerMoves();
@@ -86,19 +88,27 @@ int Search::negamax(int ply, int goalPly, int alpha, int beta)
 
 Move Search::getBestMove(int maxElapsed)
 {
+    int depthSearched = 0;
     Move bestMove;
     int startTime = std::clock() * 1000 / CLOCKS_PER_SEC;
     // while we still have time to search
     for (int depth = 0; depth <= MAX_DEPTH; depth++)
     {
+        nodesSearched = 0;
+        nodesEvaluated = 0;
         Move move = iterate(depth, startTime, maxElapsed);
         // if we ran out of time
         if (move.moved == NONE)
         {
             break;
         }
+        depthSearched = depth;
         bestMove = move;
     }
+    std::cout << "depth = " << depthSearched << std::endl;
+    std::cout << "nodes searched = " << nodesSearched << std::endl;
+    std::cout << "nodes evaluated = " << nodesEvaluated << std::endl;
+    std::cout << "best = " << moves::toNotation(bestMove) << std::endl;
     return bestMove;
 }
 

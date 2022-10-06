@@ -40,6 +40,11 @@ void Tests::tacticSuite()
     assert(runGetBestMove(MATE_TACTIC_4, 1000).to == E8);
     assert(runGetBestMove(MATE_TACTIC_5, 500).to == G5);
 
+    // make sure the engine desperately prolongs mate
+    assert(runGetBestMove(MATE_DEFENSE_1, 500).to == B5);
+    assert(runGetBestMove(MATE_DEFENSE_2, 500).to == F6);
+    assert(runGetBestMove(MATE_DEFENSE_3, 500).to == E5);
+
     // forced checkmates
     assert(runGetBestMove(MATE_1, 500).to == B2);
     assert(runGetBestMove(MATE_2, 500).to == C2);

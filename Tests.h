@@ -76,6 +76,13 @@ private:
     // winning the queen with a discovered mate in two threat
     const std::string MATE_TACTIC_5 = "1k2bq2/ppp2n1Q/1b4PP/8/8/1R1P4/5PPP/6K1 b - - 0 1";
 
+    // rook sacrifice to make it mate in two instead of mate in one
+    const std::string MATE_DEFENSE_1 = "k7/p1p1b3/3p4/r5B1/8/8/1Q3PPP/1R4K1 b - - 0 1";
+    // queen sacrifice to make it mate in two instead of mate in one
+    const std::string MATE_DEFENSE_2 = "6k1/1r3p1p/1q3PpQ/5b2/p5N1/8/4PPP1/5R1K b - - 0 1";
+    // rook interference sacrifice to make it mate in two instead of mate in one
+    const std::string MATE_DEFENSE_3 = "5rk1/5p1p/5Qpb/1r4N1/8/1P6/PBP5/1K6 b - - 0 1";
+
     // mate in one instead of capturing a queen
     const std::string MATE_1 = "6k1/1q1N1pbp/4Q1p1/8/8/8/PPP3R1/1K6 b - - 0 1";
     // mate in one instead of a longer mate
