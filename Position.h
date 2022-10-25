@@ -106,14 +106,20 @@ public:
     template<bool isEngine>
     void makeMove(Move& move)
     {
+        MoveType moveType = getMoveType(move);
+        PieceType pieceMoved = getPieceMoved(move);
+        PieceType pieceCaptured = getPieceCaptured(move);
+        Square squareFrom = getSquareFrom(move);
+        Square squareTo = getSquareTo(move);
+
         rights.halfMoveClock++;
 
-        Bitboard to = toBoard(move.to);
-        Bitboard from = toBoard(move.from);
+        Bitboard to = toBoard(squareTo);
+        Bitboard from = toBoard(squareFrom);
 
         // remove the piece we are moving
-        pieces[move.moved] ^= from;
-        hash ^= SQUARE_PIECE_KEYS[move.from][move.moved];
+        pieces[pieceMoved] ^= from;
+        hash ^= SQUARE_PIECE_KEYS[squareFrom][pieceMoved];
 
         // if we are making an engine move remember it in the zobrist hash
         if (isEngine)
@@ -122,38 +128,38 @@ public:
         }
 
         // if we captured something
-        if (move.captured != NONE)
+        if (pieceCaptured != NONE)
         {
             // captures are irreversible moves
             rights.halfMoveClock = 0;
             // if we captured en-passant
-            if (move.type == EN_PASSANT)
+            if (moveType == EN_PASSANT)
             {
                 // calculate capture square
                 Bitboard enPassant = isEngine ? north(rights.enPassantCapture) : south(rights.enPassantCapture);
                 // remove the pawn we captured
                 pieces[isEngine ? PLAYER_PAWN : ENGINE_PAWN] ^= enPassant;
-                hash ^= SQUARE_PIECE_KEYS[toSquare(enPassant)][move.captured];
+                hash ^= SQUARE_PIECE_KEYS[toSquare(enPassant)][pieceCaptured];
             }
             else
             {
                 // remove the piece we captured
-                pieces[move.captured] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][move.captured];
+                pieces[pieceCaptured] ^= to;
+                hash ^= SQUARE_PIECE_KEYS[squareTo][pieceCaptured];
                 // if we captured a rook
-                if (move.captured == (isEngine ? PLAYER_ROOK : ENGINE_ROOK))
+                if (pieceCaptured == (isEngine ? PLAYER_ROOK : ENGINE_ROOK))
                 {
                     if (isEngine)
                     {
                         // if we captured a player rook on its initial square
-                        if (move.to == A1 && (ENGINE_IS_WHITE ? rights.playerCastleKingside : rights.playerCastleQueenside))
+                        if (squareTo == A1 && (ENGINE_IS_WHITE ? rights.playerCastleKingside : rights.playerCastleQueenside))
                         {
                             // forbid the player from using that rook to castle
                             (ENGINE_IS_WHITE ? rights.playerCastleKingside : rights.playerCastleQueenside) = false;
                             hash ^= ENGINE_IS_WHITE ? PLAYER_CASTLE_KINGSIDE_KEY : PLAYER_CASTLE_QUEENSIDE_KEY;
                         }
                         // if we captured a player rook on its initial square
-                        else if (move.to == H1 && (ENGINE_IS_WHITE ? rights.playerCastleQueenside : rights.playerCastleKingside))
+                        else if (squareTo == H1 && (ENGINE_IS_WHITE ? rights.playerCastleQueenside : rights.playerCastleKingside))
                         {
                             // forbid the player from using that rook to castle
                             (ENGINE_IS_WHITE ? rights.playerCastleQueenside : rights.playerCastleKingside) = false;
@@ -163,7 +169,7 @@ public:
                     else
                     {
                         // if we captured an engine rook on its initial square
-                        if (move.to == H8 && (ENGINE_IS_WHITE ? rights.engineCastleQueenside : rights.engineCastleKingside))
+                        if (squareTo == H8 && (ENGINE_IS_WHITE ? rights.engineCastleQueenside : rights.engineCastleKingside))
                         {
                             // forbid the engine from using that rook to castle
                             (ENGINE_IS_WHITE ? rights.engineCastleQueenside : rights.engineCastleKingside) = false;
@@ -171,7 +177,7 @@ public:
 
                         }
                             // if we captured an engine rook on its initial square
-                        else if (move.to == A8 && (ENGINE_IS_WHITE ? rights.engineCastleKingside : rights.engineCastleQueenside))
+                        else if (squareTo == A8 && (ENGINE_IS_WHITE ? rights.engineCastleKingside : rights.engineCastleQueenside))
                         {
                             // forbid the engine from using that rook to castle
                             (ENGINE_IS_WHITE ? rights.engineCastleKingside : rights.engineCastleQueenside) = false;
@@ -189,66 +195,66 @@ public:
             rights.enPassantCapture = EMPTY_BITBOARD;
         }
         // if we moved a pawn without a capture
-        if ((move.moved == (isEngine ? ENGINE_PAWN : PLAYER_PAWN)) && move.captured == NONE)
+        if ((pieceMoved == (isEngine ? ENGINE_PAWN : PLAYER_PAWN)) && pieceCaptured == NONE)
         {
             // pawn moves are irreversible moves
             rights.halfMoveClock = 0;
             // if we made a double push pawn move
-            if (abs(move.to - move.from) > 8)
+            if (abs(squareTo - squareFrom) > 8)
             {
                 // remember this double push pawn move enables en passant
                 rights.enPassantCapture = isEngine ? north(to) : south(to);
-                hash ^= EN_PASSANT_KEYS[getFile(move.to)];
+                hash ^= EN_PASSANT_KEYS[getFile(squareTo)];
             }
         }
 
         // if we need to make a promotion
-        if (move.type >= KNIGHT_PROMOTION)
+        if (moveType >= KNIGHT_PROMOTION)
         {
             // promotions are irreversible moves
             rights.halfMoveClock = 0;
-            if (move.type == QUEEN_PROMOTION)
+            if (moveType == QUEEN_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_QUEEN: PLAYER_QUEEN] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][isEngine ? ENGINE_QUEEN: PLAYER_QUEEN];
+                hash ^= SQUARE_PIECE_KEYS[squareTo][isEngine ? ENGINE_QUEEN: PLAYER_QUEEN];
             }
-            else if (move.type == KNIGHT_PROMOTION)
+            else if (moveType == KNIGHT_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT];
+                hash ^= SQUARE_PIECE_KEYS[squareTo][isEngine ? ENGINE_KNIGHT: PLAYER_KNIGHT];
             }
-            else if (move.type == ROOK_PROMOTION)
+            else if (moveType == ROOK_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_ROOK: PLAYER_ROOK] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][isEngine ? ENGINE_ROOK: PLAYER_ROOK];
+                hash ^= SQUARE_PIECE_KEYS[squareTo][isEngine ? ENGINE_ROOK: PLAYER_ROOK];
             }
-            else if (move.type == BISHOP_PROMOTION)
+            else if (moveType == BISHOP_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_BISHOP: PLAYER_BISHOP] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][isEngine ? ENGINE_BISHOP: PLAYER_BISHOP];
+                hash ^= SQUARE_PIECE_KEYS[squareTo][isEngine ? ENGINE_BISHOP: PLAYER_BISHOP];
             }
         }
         // if we did not make a promotion
         else
         {
             // put the piece we are moving on its new square
-            pieces[move.moved] ^= to;
-            hash ^= SQUARE_PIECE_KEYS[move.to][move.moved];
+            pieces[pieceMoved] ^= to;
+            hash ^= SQUARE_PIECE_KEYS[squareTo][pieceMoved];
         }
         // if we moved a rook
-        if (move.moved == (isEngine ? ENGINE_ROOK : PLAYER_ROOK))
+        if (pieceMoved == (isEngine ? ENGINE_ROOK : PLAYER_ROOK))
         {
             if (isEngine)
             {
                 // if we moved an engine rook from its initial square
-                if (move.from == A8 && (ENGINE_IS_WHITE ? rights.engineCastleKingside : rights.engineCastleQueenside))
+                if (squareFrom == A8 && (ENGINE_IS_WHITE ? rights.engineCastleKingside : rights.engineCastleQueenside))
                 {
                     // forbid the engine from using that rook to castle
                     (ENGINE_IS_WHITE ? rights.engineCastleKingside : rights.engineCastleQueenside) = false;
                     hash ^= ENGINE_IS_WHITE ? ENGINE_CASTLE_KINGSIDE_KEY : ENGINE_CASTLE_QUEENSIDE_KEY;
                 }
                 // if we moved an engine rook from its initial square
-                else if (move.from == H8 && (ENGINE_IS_WHITE ? rights.engineCastleQueenside : rights.engineCastleKingside))
+                else if (squareFrom == H8 && (ENGINE_IS_WHITE ? rights.engineCastleQueenside : rights.engineCastleKingside))
                 {
                     // forbid the engine from using that rook to castle
                     (ENGINE_IS_WHITE ? rights.engineCastleQueenside : rights.engineCastleKingside) = false;
@@ -258,14 +264,14 @@ public:
             else
             {
                 // if we moved a player rook from its initial square
-                if (move.from == A1 && (ENGINE_IS_WHITE ? rights.playerCastleKingside : rights.playerCastleQueenside))
+                if (squareFrom == A1 && (ENGINE_IS_WHITE ? rights.playerCastleKingside : rights.playerCastleQueenside))
                 {
                     // forbid the engine from using that rook to castle
                     (ENGINE_IS_WHITE ? rights.playerCastleKingside : rights.playerCastleQueenside) = false;
                     hash ^= ENGINE_IS_WHITE ? PLAYER_CASTLE_KINGSIDE_KEY : PLAYER_CASTLE_QUEENSIDE_KEY;
                 }
                 // if we moved a player rook from its initial square
-                else if (move.from == H1 && (ENGINE_IS_WHITE ? rights.playerCastleQueenside : rights.playerCastleKingside))
+                else if (squareFrom == H1 && (ENGINE_IS_WHITE ? rights.playerCastleQueenside : rights.playerCastleKingside))
                 {
                     // forbid the engine from using that rook to castle
                     (ENGINE_IS_WHITE ? rights.playerCastleQueenside : rights.playerCastleKingside) = false;
@@ -274,7 +280,7 @@ public:
             }
         }
         // if we moved a king
-        else if (move.moved == (isEngine ? ENGINE_KING : PLAYER_KING))
+        else if (pieceMoved == (isEngine ? ENGINE_KING : PLAYER_KING))
         {
             // disallow all castling for this player
             if (isEngine ? rights.engineCastleKingside : rights.playerCastleKingside)
@@ -289,29 +295,29 @@ public:
             }
 
             // if we castled
-            if (move.type == CASTLE)
+            if (moveType == CASTLE)
             {
                 if (isEngine)
                 {
                     // figure out which way we castled
-                    bool isRightCastle = (move.to == F8 || move.to == G8);
+                    bool isRightCastle = (squareTo == F8 || squareTo == G8);
                     // remove either the right or left rook
                     pieces[ENGINE_ROOK] ^= toBoard(isRightCastle ? H8 : A8);
                     hash ^= SQUARE_PIECE_KEYS[isRightCastle ? H8 : A8][ENGINE_ROOK];
                     // place a rook to the right or left of the king
                     pieces[ENGINE_ROOK] ^= isRightCastle ? west(to) : east(to);
-                    hash ^= SQUARE_PIECE_KEYS[isRightCastle ? west(move.to) : east(move.to)][ENGINE_ROOK];
+                    hash ^= SQUARE_PIECE_KEYS[isRightCastle ? west(squareTo) : east(squareTo)][ENGINE_ROOK];
                 }
                 else
                 {
-                    bool isRightCastle = (move.to == F1 || move.to == G1);
+                    bool isRightCastle = (squareTo == F1 || squareTo == G1);
                     // remove either the right or left rook
                     pieces[PLAYER_ROOK] ^= toBoard(isRightCastle ? H1 : A1);
                     hash ^= SQUARE_PIECE_KEYS[isRightCastle ? H1 : A1][PLAYER_ROOK];
 
                     // place a rook to the right or left of the king
                     pieces[PLAYER_ROOK] ^= isRightCastle ? west(to) : east(to);
-                    hash ^= SQUARE_PIECE_KEYS[isRightCastle ? west(move.to) : east(move.to)][PLAYER_ROOK];
+                    hash ^= SQUARE_PIECE_KEYS[isRightCastle ? west(squareTo) : east(squareTo)][PLAYER_ROOK];
                 }
             }
         }
@@ -329,12 +335,18 @@ public:
     template<bool isEngine>
     void unMakeMove(Move& move, PositionRights& previousRights)
     {
-        Bitboard from = toBoard(move.from);
-        Bitboard to = toBoard(move.to);
+        MoveType moveType = getMoveType(move);
+        PieceType pieceMoved = getPieceMoved(move);
+        PieceType pieceCaptured = getPieceCaptured(move);
+        Square squareFrom = getSquareFrom(move);
+        Square squareTo = getSquareTo(move);
+
+        Bitboard from = toBoard(squareFrom);
+        Bitboard to = toBoard(squareTo);
 
         // add the piece back to where it came from
-        pieces[move.moved] ^= from;
-        hash ^= SQUARE_PIECE_KEYS[move.from][move.moved];
+        pieces[pieceMoved] ^= from;
+        hash ^= SQUARE_PIECE_KEYS[squareFrom][pieceMoved];
 
         // if we are un making an engine move forget it in the zobrist hash
         if (isEngine)
@@ -382,70 +394,70 @@ public:
         rights.halfMoveClock = previousRights.halfMoveClock;
 
         // if we want to undo an en-passant capture
-        if (move.type == EN_PASSANT)
+        if (moveType == EN_PASSANT)
         {
             // restore the captured pawn
-            pieces[move.captured] ^= isEngine ? north(to) : south(to);
-            hash ^= SQUARE_PIECE_KEYS[isEngine ? north(move.to) : south(move.to)][move.captured];
+            pieces[pieceCaptured] ^= isEngine ? north(to) : south(to);
+            hash ^= SQUARE_PIECE_KEYS[isEngine ? north(squareTo) : south(squareTo)][pieceCaptured];
         }
         // if we want to undo a normal capture
-        else if (move.captured != NONE)
+        else if (pieceCaptured != NONE)
         {
             // restore captured piece
-            pieces[move.captured] ^= to;
-            hash ^= SQUARE_PIECE_KEYS[move.to][move.captured];
+            pieces[pieceCaptured] ^= to;
+            hash ^= SQUARE_PIECE_KEYS[squareTo][pieceCaptured];
         }
         // if we want to undo a promotion
-        if (move.type >= KNIGHT_PROMOTION)
+        if (moveType >= KNIGHT_PROMOTION)
         {
-            if (move.type == QUEEN_PROMOTION)
+            if (moveType == QUEEN_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_QUEEN : PLAYER_QUEEN] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][isEngine ? ENGINE_QUEEN : PLAYER_QUEEN];
+                hash ^= SQUARE_PIECE_KEYS[squareTo][isEngine ? ENGINE_QUEEN : PLAYER_QUEEN];
             }
-            else if (move.type == KNIGHT_PROMOTION)
+            else if (moveType == KNIGHT_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT];
+                hash ^= SQUARE_PIECE_KEYS[squareTo][isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT];
             }
-            else if (move.type == ROOK_PROMOTION)
+            else if (moveType == ROOK_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_ROOK : PLAYER_ROOK] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][isEngine ? ENGINE_ROOK : PLAYER_ROOK];
+                hash ^= SQUARE_PIECE_KEYS[squareTo][isEngine ? ENGINE_ROOK : PLAYER_ROOK];
             }
-            else if (move.type == BISHOP_PROMOTION)
+            else if (moveType == BISHOP_PROMOTION)
             {
                 pieces[isEngine ? ENGINE_BISHOP : PLAYER_BISHOP] ^= to;
-                hash ^= SQUARE_PIECE_KEYS[move.to][isEngine ? ENGINE_BISHOP : PLAYER_BISHOP];
+                hash ^= SQUARE_PIECE_KEYS[squareTo][isEngine ? ENGINE_BISHOP : PLAYER_BISHOP];
             }
         }
         // if we are not undoing promotion
         else
         {
             // remove the piece we moved from where it went to
-            pieces[move.moved] ^= to;
-            hash ^= SQUARE_PIECE_KEYS[move.to][move.moved];
+            pieces[pieceMoved] ^= to;
+            hash ^= SQUARE_PIECE_KEYS[squareTo][pieceMoved];
             // if we want to undo castling
-            if (move.type == CASTLE)
+            if (moveType == CASTLE)
             {
                 // we already moved the king back to where it came from.
                 // we just have to un-castle the castled rook
                 if (isEngine)
                 {
-                    bool wasRightCastle = move.to == F8 || move.to == G8;
+                    bool wasRightCastle = squareTo == F8 || squareTo == G8;
                     // remove the rook from next to the king
                     pieces[ENGINE_ROOK] ^= wasRightCastle ? west(to) : east(to);
-                    hash ^= SQUARE_PIECE_KEYS[wasRightCastle ? west(move.to) : east(move.to)][ENGINE_ROOK];
+                    hash ^= SQUARE_PIECE_KEYS[wasRightCastle ? west(squareTo) : east(squareTo)][ENGINE_ROOK];
                     // put the rook back to where it came from
                     pieces[ENGINE_ROOK] ^= toBoard(wasRightCastle ? H8 : A8);
                     hash ^= SQUARE_PIECE_KEYS[wasRightCastle ? H8 : A8][ENGINE_ROOK];
                 }
                 else
                 {
-                    bool wasRightCastle = move.to == F1 || move.to == G1;
+                    bool wasRightCastle = squareTo == F1 || squareTo == G1;
                     // remove the rook from next to the king
                     pieces[PLAYER_ROOK] ^= wasRightCastle ? west(to) : east(to);
-                    hash ^= SQUARE_PIECE_KEYS[wasRightCastle ? west(move.to) : east(move.to)][PLAYER_ROOK];
+                    hash ^= SQUARE_PIECE_KEYS[wasRightCastle ? west(squareTo) : east(squareTo)][PLAYER_ROOK];
                     // put the rook back to where it came from
                     pieces[PLAYER_ROOK] ^= toBoard(wasRightCastle ? H1 : A1);
                     hash ^= SQUARE_PIECE_KEYS[wasRightCastle ? H1 : A1][PLAYER_ROOK];

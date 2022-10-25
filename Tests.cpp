@@ -6,56 +6,56 @@
 
 Tests::Tests()
 {
-    tacticSuite();
+    perftSuite();
 }
 
 void Tests::tacticSuite()
 {
     std::cout << "* tactical suite run initialized\n";
     // fork tactics winning material
-    assert(runGetBestMove(FORK_1, 500).to == E2);
-    assert(runGetBestMove(FORK_2, 500).to == D3);
-    assert(runGetBestMove(FORK_3, 500).to == C2);
-    assert(runGetBestMove(FORK_4, 1500).to == E1);
-    assert(runGetBestMove(FORK_5, 500).to == E4);
+    assert(getSquareTo(runGetBestMove(FORK_1, 500)) == E2);
+    assert(getSquareTo(runGetBestMove(FORK_2, 500)) == D3);
+    assert(getSquareTo(runGetBestMove(FORK_3, 500)) == C2);
+    assert(getSquareTo(runGetBestMove(FORK_4, 1500)) == E1);
+    assert(getSquareTo(runGetBestMove(FORK_5, 500)) == E4);
 
     // pin tactics winning material
-    assert(runGetBestMove(PIN_1, 500).to == F5);
-    assert(runGetBestMove(PIN_2, 500).to == E8);
-    assert(runGetBestMove(PIN_3, 500).to == E8);
-    assert(runGetBestMove(PIN_4, 500).to == G7);
-    assert(runGetBestMove(PIN_5, 500).to == C6);
+    assert(getSquareTo(runGetBestMove(PIN_1, 500)) == F5);
+    assert(getSquareTo(runGetBestMove(PIN_2, 500)) == E8);
+    assert(getSquareTo(runGetBestMove(PIN_3, 500)) == E8);
+    assert(getSquareTo(runGetBestMove(PIN_4, 500)) == G7);
+    assert(getSquareTo(runGetBestMove(PIN_5, 500)) == C6);
 
     // skewer tactics winning material
-    assert(runGetBestMove(SKEWER_1, 500).to == A1);
-    assert(runGetBestMove(SKEWER_2, 500).to == F6);
-    assert(runGetBestMove(SKEWER_3, 500).to == E8);
-    assert(runGetBestMove(SKEWER_4, 500).to == B6);
-    assert(runGetBestMove(SKEWER_5, 1500).to == C5);
+    assert(getSquareTo(runGetBestMove(SKEWER_1, 500)) == A1);
+    assert(getSquareTo(runGetBestMove(SKEWER_2, 500)) == F6);
+    assert(getSquareTo(runGetBestMove(SKEWER_3, 500)) == E8);
+    assert(getSquareTo(runGetBestMove(SKEWER_4, 500)) == B6);
+    assert(getSquareTo(runGetBestMove(SKEWER_5, 1500)) == C5);
 
     // tactics relying on checkmates that win material
-    assert(runGetBestMove(MATE_TACTIC_1, 500).to == E7);
-    assert(runGetBestMove(MATE_TACTIC_2, 1000).to == G8);
-    assert(runGetBestMove(MATE_TACTIC_3, 500).to == C1);
-    assert(runGetBestMove(MATE_TACTIC_4, 1000).to == E8);
-    assert(runGetBestMove(MATE_TACTIC_5, 500).to == G5);
+    assert(getSquareTo(runGetBestMove(MATE_TACTIC_1, 500)) == E7);
+    assert(getSquareTo(runGetBestMove(MATE_TACTIC_2, 1000)) == G8);
+    assert(getSquareTo(runGetBestMove(MATE_TACTIC_3, 500)) == C1);
+    assert(getSquareTo(runGetBestMove(MATE_TACTIC_4, 1000)) == E8);
+    assert(getSquareTo(runGetBestMove(MATE_TACTIC_5, 500)) == G5);
 
     // make sure the engine desperately prolongs mate
-    assert(runGetBestMove(MATE_DEFENSE_1, 500).to == B5);
-    assert(runGetBestMove(MATE_DEFENSE_2, 500).to == F6);
-    assert(runGetBestMove(MATE_DEFENSE_3, 500).to == E5);
+    assert(getSquareTo(runGetBestMove(MATE_DEFENSE_1, 500)) == B5);
+    assert(getSquareTo(runGetBestMove(MATE_DEFENSE_2, 500)) == F6);
+    assert(getSquareTo(runGetBestMove(MATE_DEFENSE_3, 500)) == E5);
 
     // forced checkmates
-    assert(runGetBestMove(MATE_1, 500).to == B2);
-    assert(runGetBestMove(MATE_2, 500).to == C2);
-    assert(runGetBestMove(MATE_3, 500).to == D1);
-    assert(runGetBestMove(MATE_4, 500).to == E1);
-    assert(runGetBestMove(MATE_5, 500).to == G1);
-    assert(runGetBestMove(MATE_6, 500).to == C3);
-    assert(runGetBestMove(MATE_7, 1500).to == H2);
-    assert(runGetBestMove(MATE_8, 1000).to == F3);
-    assert(runGetBestMove(MATE_9, 2500).to == F3);
-    assert(runGetBestMove(MATE_10, 1000).to == C2);
+    assert(getSquareTo(runGetBestMove(MATE_1, 500)) == B2);
+    assert(getSquareTo(runGetBestMove(MATE_2, 500)) == C2);
+    assert(getSquareTo(runGetBestMove(MATE_3, 500)) == D1);
+    assert(getSquareTo(runGetBestMove(MATE_4, 500)) == E1);
+    assert(getSquareTo(runGetBestMove(MATE_5, 500)) == G1);
+    assert(getSquareTo(runGetBestMove(MATE_6, 500)) == C3);
+    assert(getSquareTo(runGetBestMove(MATE_7, 1500)) == H2);
+    assert(getSquareTo(runGetBestMove(MATE_8, 1000)) == F3);
+    assert(getSquareTo(runGetBestMove(MATE_9, 2500)) == F3);
+    assert(getSquareTo(runGetBestMove(MATE_10, 1000)) == C2);
 
     std::cout << "* tactical suite run terminated.\n";
 }

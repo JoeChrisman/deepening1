@@ -110,15 +110,17 @@ private:
             return false;
         }
         Move move = moveList[index];
+        PieceType pieceCaptured = getPieceCaptured(move);
+
         int bestIndex = index;
         int bestScore;
-        if (move.captured != NONE)
+        if (pieceCaptured != NONE)
         {
             // sort winning captures before losing captures (PxQ before QxP),
             // the score will always be at least the value of a pawn
             bestScore = PIECE_SCORES[ENGINE_QUEEN] +
-                        PIECE_SCORES[move.captured] -
-                        PIECE_SCORES[move.moved];
+                        PIECE_SCORES[pieceCaptured] -
+                        PIECE_SCORES[getPieceMoved(move)];
         }
         else
         {
@@ -128,13 +130,14 @@ private:
         for (int i = index + 1; i < moveList.size(); i++)
         {
             move = moveList[i];
+            pieceCaptured = getPieceCaptured(move);
 
             int score;
-            if (move.captured != NONE)
+            if (pieceCaptured != NONE)
             {
                 score = PIECE_SCORES[ENGINE_QUEEN] +
-                            PIECE_SCORES[move.captured] -
-                            PIECE_SCORES[move.moved];
+                            PIECE_SCORES[pieceCaptured] -
+                            PIECE_SCORES[getPieceMoved(move)];
             }
             else
             {

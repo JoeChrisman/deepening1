@@ -98,7 +98,7 @@ Move Search::getBestMove(int maxElapsed)
         nodesEvaluated = 0;
         Move move = iterate(depth, startTime, maxElapsed);
         // if we ran out of time
-        if (move.moved == NONE)
+        if (!move)
         {
             break;
         }
@@ -131,10 +131,8 @@ Move Search::iterate(int depth, int startTime, int maxElapsed)
         // if we ran out of time during iterative deepening
         if (clock() * 1000 / CLOCKS_PER_SEC - startTime > maxElapsed)
         {
-            // return a null move we can check for
-            Move nullMove;
-            nullMove.moved = NONE;
-            return nullMove;
+            // return a null move
+            return 0;
         }
 
         // make the move

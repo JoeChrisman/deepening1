@@ -1,14 +1,16 @@
-#include "ChessGame.h"
-//#include "Tests.h"
+//#include "ChessGame.h"
+#include "Tests.h"
 
 int main()
 {
-
+    /*
     Position position(ENGINE_IS_WHITE ? "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr w KQkq -"
                                       : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
-    ChessGame game(position);
+    ChessGame game(position);*/
 
-    //Tests tests;
+
+
+    Tests tests;
 
     return 0;
 }

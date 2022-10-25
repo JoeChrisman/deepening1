@@ -79,13 +79,12 @@ void MoveGen::genPromotions(Square from, Square to, PieceType captured)
 {
     for (int promotionType = KNIGHT_PROMOTION; promotionType <= QUEEN_PROMOTION; promotionType++)
     {
-        moveList.push_back(Move{
+        moveList.push_back(makeMove(
             (MoveType)promotionType,
-            from,
-            to,
             isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-            captured
-        });
+            captured,
+            from,
+            to));
     }
 }
 
@@ -337,13 +336,12 @@ void MoveGen::genKnightMoves()
         while (moves)
         {
             Square to = popFirstPiece(moves);
-            moveList.push_back(Move{
+            moveList.push_back(makeMove(
                 NORMAL,
-                from,
-                to,
                 isEngine ? ENGINE_KNIGHT : PLAYER_KNIGHT,
-                position.getPiece<!isEngine>(to)
-            });
+                position.getPiece<!isEngine>(to),
+                from,
+                to));
         }
     }
 }
@@ -388,13 +386,13 @@ void MoveGen::genKingMoves()
                     if (!(QUEENSIDE_CASTLE_CHECKS & (isEngine ? RANK_7 : RANK_0) & ~safeSquares))
                     {
                         // we can castle queenside. add the castling move
-                        moveList.push_back(Move{
+                        moveList.push_back(makeMove(
                             CASTLE,
-                            from,
-                            ENGINE_IS_WHITE ? east(east(from)) : west(west(from)),
                             isEngine ? ENGINE_KING : PLAYER_KING,
-                            NONE
-                        });
+                            NONE,
+                            from,
+                            ENGINE_IS_WHITE ? east(east(from)) : west(west(from))
+                            ));
                     }
                 }
             }
@@ -406,13 +404,13 @@ void MoveGen::genKingMoves()
                 if (!(KINGSIDE_CASTLE_CHECKS & (isEngine ? RANK_7 : RANK_0) & (position.occupied | ~safeSquares)))
                 {
                     // we can castle kingside. add the castling move
-                    moveList.push_back(Move{
-                        CASTLE,
-                        from,
-                        ENGINE_IS_WHITE ? west(west(from)) : east(east(from)),
-                        isEngine ? ENGINE_KING : PLAYER_KING,
-                        NONE
-                    });
+                    moveList.push_back(makeMove(
+                            CASTLE,
+                            isEngine ? ENGINE_KING : PLAYER_KING,
+                            NONE,
+                            from,
+                            ENGINE_IS_WHITE ? west(west(from)) : east(east(from))
+                    ));
                 }
             }
         }
@@ -426,13 +424,12 @@ void MoveGen::genKingMoves()
     while (moves)
     {
         Square to = popFirstPiece(moves);
-        moveList.push_back(Move{
+        moveList.push_back(makeMove(
             NORMAL,
-            from,
-            to,
             isEngine ? ENGINE_KING : PLAYER_KING,
-            position.getPiece<!isEngine>(to)
-        });
+            position.getPiece<!isEngine>(to),
+            from,
+            to));
     }
 }
 
@@ -480,13 +477,12 @@ void MoveGen::genPawnMoves()
                 continue;
             }
             // add the one square pawn push
-            moveList.push_back(Move{
+            moveList.push_back(makeMove(
                 NORMAL,
-                from,
-                to,
                 isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                NONE
-            });
+                NONE,
+                from,
+                to));
         }
         // add two square pawn moves
         while (pushed2)
@@ -499,13 +495,12 @@ void MoveGen::genPawnMoves()
                 continue;
             }
             // add the two square pawn push
-            moveList.push_back(Move{
+            moveList.push_back(makeMove(
                 NORMAL,
-                from,
-                to,
                 isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                NONE
-            });
+                NONE,
+                from,
+                to));
         }
     }
     // don't generate capture moves or promotions for cardinal pinned pawns
@@ -562,13 +557,12 @@ void MoveGen::genPawnMoves()
         while (captures)
         {
             Square to = popFirstPiece(captures);
-            moveList.push_back(Move{
-                    NORMAL,
-                    from,
-                    to,
-                    isEngine ? ENGINE_PAWN : PLAYER_PAWN,
-                    position.getPiece<!isEngine>(to)
-            });
+            moveList.push_back(makeMove(
+                NORMAL,
+                isEngine ? ENGINE_PAWN : PLAYER_PAWN,
+                position.getPiece<!isEngine>(to),
+                from,
+                to));
         }
         // add promotion capture moves
         while (promotionCaptures)
@@ -619,13 +613,12 @@ void MoveGen::genPawnMoves()
             // if there are not two pieces on the pin ray, the pawn is not pinned
             if (countPieces(horizontalAttacks) != 2)
             {
-                moveList.push_back(Move{
+                moveList.push_back(makeMove(
                     EN_PASSANT,
-                    from,
-                    toSquare(enPassant),
                     isEngine ? ENGINE_PAWN : PLAYER_PAWN,
                     isEngine ? PLAYER_PAWN : ENGINE_PAWN,
-                });
+                    from,
+                    toSquare(enPassant)));
             }
         }
     }
@@ -672,13 +665,12 @@ void MoveGen::genRookMoves()
         while (moves)
         {
             Square to = popFirstPiece(moves);
-            moveList.push_back(Move{
+            moveList.push_back(makeMove(
                 NORMAL,
-                from,
-                to,
                 isEngine ? ENGINE_ROOK : PLAYER_ROOK,
-                position.getPiece<!isEngine>(to)
-            });
+                position.getPiece<!isEngine>(to),
+                from,
+                to));
         }
     }
 }
@@ -723,13 +715,12 @@ void MoveGen::genBishopMoves()
         while (moves)
         {
             Square to = popFirstPiece(moves);
-            moveList.push_back(Move{
+            moveList.push_back(makeMove(
                 NORMAL,
-                from,
-                to,
                 isEngine ? ENGINE_BISHOP : PLAYER_BISHOP,
-                position.getPiece<!isEngine>(to)
-            });
+                position.getPiece<!isEngine>(to),
+                from,
+                to));
         }
     }
 }
@@ -793,13 +784,13 @@ void MoveGen::genQueenMoves()
         while (moves)
         {
             Square to = popFirstPiece(moves);
-            moveList.push_back(Move{
+
+            moveList.push_back(makeMove(
                 NORMAL,
-                from,
-                to,
                 isEngine ? ENGINE_QUEEN : PLAYER_QUEEN,
-                position.getPiece<!isEngine>(to)
-            });
+                position.getPiece<!isEngine>(to),
+                from,
+                to));
         }
     }
 }

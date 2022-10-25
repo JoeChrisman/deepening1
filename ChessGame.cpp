@@ -326,13 +326,12 @@ Move ChessGame::getMove()
             }
         }
     }
-    return Move{
+    return makeMove(
         moveType,
-        draggingFrom,
-        draggingTo,
         dragging.piece,
-        captured
-    };
+        captured,
+        draggingFrom,
+        draggingTo);
 }
 
 void ChessGame::onMousePressed(SDL_Point& mouse)
@@ -383,10 +382,10 @@ void ChessGame::onMousePressed(SDL_Point& mouse)
                 }
                 for (Move& move : search.moveGen.moveList)
                 {
-                    if (move.from == clicked)
+                    if (getSquareFrom(move) == clicked)
                     {
                         // highlight move options
-                        board[move.to].isMoveOption = true;
+                        board[getSquareTo(move)].isMoveOption = true;
                     }
                 }
                 // remove the piece from its square
@@ -553,8 +552,8 @@ void ChessGame::run()
                 {
                     board[popFirstPiece(checkers)].isChecking = true;
                 }
-                board[engineMove.to].isPreviousMove = true;
-                board[engineMove.from].isPreviousMove = true;
+                board[getSquareTo(engineMove)].isPreviousMove = true;
+                board[getSquareFrom(engineMove)].isPreviousMove = true;
                 // render the engine's move
                 render();
             }
