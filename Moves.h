@@ -37,6 +37,8 @@ enum MoveType
 
 typedef unsigned int Move;
 
+const Move NULL_MOVE = 0;
+
 /*
  * a move is encoded as a 32 bit unsigned integer.
  * the first 23 bits are used, and last 9 bits are unused.
@@ -50,7 +52,6 @@ typedef unsigned int Move;
  * 111111 (Square to 0->63)
  * 000000000 (Unused bits)
  *
- * if a move is zero, that move can be considered a null move
  */
 
 inline Move makeMove(MoveType moveType, PieceType moved, PieceType captured, Square from, Square to)

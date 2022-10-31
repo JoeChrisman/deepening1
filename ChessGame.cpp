@@ -512,8 +512,8 @@ void ChessGame::run()
             // if it is the engine's turn
             if (position.isEngineMove)
             {
-                // spend six seconds calculating a move...
-                Move engineMove = search.getBestMove(6000);
+                // spend a minimum of three seconds calculating a move...
+                Move engineMove = search.getBestMove(3000);
                 /*
                  * we just spend many seconds searching for the best move.
                  * meanwhile, the player might have been dragging the left mouse
@@ -527,12 +527,6 @@ void ChessGame::run()
                 while (SDL_PollEvent(&event)) {}
                 // play the move
                 search.moveGen.position.makeMove<true>(engineMove);
-                // if the engine move was irreversible
-                if (moves::isIrreversible(engineMove))
-                {
-                    // clear the repetitions list. we can never get the old position again
-                    search.repetitions.clear();
-                }
                 // if the engine played a draw by threefold repetition or 50 move rule
                 if (search.repeated() || position.rights.halfMoveClock >= 50)
                 {

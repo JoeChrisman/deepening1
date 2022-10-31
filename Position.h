@@ -121,11 +121,12 @@ public:
         pieces[pieceMoved] ^= from;
         hash ^= SQUARE_PIECE_KEYS[squareFrom][pieceMoved];
 
-        // if we are making an engine move remember it in the zobrist hash
         if (isEngine)
         {
-            hash ^= ENGINE_TO_MOVE_KEY;
+            fullMoves++;
         }
+        hash ^= ENGINE_TO_MOVE_KEY;
+
 
         // if we captured something
         if (pieceCaptured != NONE)
@@ -348,11 +349,11 @@ public:
         pieces[pieceMoved] ^= from;
         hash ^= SQUARE_PIECE_KEYS[squareFrom][pieceMoved];
 
-        // if we are un making an engine move forget it in the zobrist hash
         if (isEngine)
         {
-            hash ^= ENGINE_TO_MOVE_KEY;
+            fullMoves--;
         }
+        hash ^= ENGINE_TO_MOVE_KEY;
 
         // if we lost the right to castle during the previous move, undo the loss of castling rights.
         // also add the appropriate castling key back to the zobrist hash

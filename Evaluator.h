@@ -7,8 +7,8 @@
 
 #include "MoveGen.h"
 
-const int MAX_EVAL = 1000000000;
-const int MIN_EVAL = -1000000000;
+const int MAX_EVAL = 32767;
+const int MIN_EVAL = -32767;
 
 const int PIECE_SCORES[13] = {
         100, // PLAYER_PAWN

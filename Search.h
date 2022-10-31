@@ -20,12 +20,36 @@ public:
     /*
      * a vector of zobrist hashes used for detecting draw by repetition.
      * this vector can be cleared out whenever an irreversible move is made.
-     * when the engine or the player makes a move in the GUI (not in the search),
+     * when the engine or the player makes a move in the game (not in the search),
      * we check if the move is irreversible, if it is, we can clear the repetitions vector.
      * In the search, we push and pop positions from the repetitions vector, but never clear it
      */
     std::vector<Zobrist> repetitions;
     Move getBestMove(int maxElapsed);
+
+    /*
+     * a struct that represents a position we already evaluated.
+     * by remembering what we already calculated, we can prune huge subtrees.
+     */
+    struct Node
+    {
+        Zobrist hash; // to help detect hash collisions (two different zobrist keys hashing to the same index)
+        Move bestMove; // to help improve move ordering by using the last best move we calculated for this node
+        short depth; // to make sure we don't use the evaluation of a more shallowly searched node than the current node
+        short evaluation;
+        bool isLowerBound; // we could not find a move greater than alpha
+        bool isUpperBound; // we found a move greater than beta
+        bool isExact; // the evaluation for this node does not belong to a bound
+    };
+
+    /*
+     * a hash table, indexed by position zobrist hash modulo table size, that
+     * holds information about previously evaluated nodes.
+     * https://www.chessprogramming.org/Transposition_Table
+     */
+    const int MAX_TRANSPOSITIONS = 16777213; // 2^24 - 3, the greatest prime number smaller than 2^24
+    std::vector<Node> transpositions = std::vector<Node>(MAX_TRANSPOSITIONS);
+
 
     // return true if we repeated a position three times
     inline bool repeated()
@@ -58,36 +82,25 @@ private:
 
     const int MAX_DEPTH = 100;
 
-    int nodesSearched;
-    int nodesEvaluated;
-
-    // a vector containing the best line during the previous iterative deepening search.
-    // this vector should be cleared when initializing iterative deepening for a new position
-    std::vector<Move> principalVariation;
+    int nodesSearched = 0;
+    int nodesEvaluated = 0;
+    int transpositionHits = 0;
 
     /*
      * depth first negamax search with alpha beta pruning.
      * negamax is a simplified version of the minimax algorithm,
      * that takes advantage of the fact that max(a, b) = -min(-a, -b)
-     * we play all moves for the engine, and then play all moves for the player,
-     * all the way until ply reaches the given goalPly.
-     * along the way, we keep track of a lower bound (alpha), and an upper bound (beta).
-     * we can use these bounds to prune large parts of the search tree, because we
-     * don't have to look for stronger refutations than a refutation we already found.
      * https://www.chessprogramming.org/Negamax
      * https://www.chessprogramming.org/Minimax
      * https://www.chessprogramming.org/Alpha-Beta
      */
-    int negamax(int ply, int goalPly, int alpha, int beta);
+    int negamax(int depth, int alpha, int beta);
 
     /*
      * iterative deepening search.
-     * we search the tree depth first repeatedly, starting at depth 0
+     * we search the tree depth first repeatedly, starting at depth 1
      * and increasing, until a time given time restraint has been breached
      * https://www.chessprogramming.org/Iterative_Deepening
-     * so far, there are no move ordering techniques implemented here, so this method
-     * will not provide an efficiency increase. later, we will add a transposition
-     * table so we can actually benefit from researching the top of the tree
      */
     Move iterate(int depth, int startTime, int maxElapsed);
 
@@ -99,11 +112,12 @@ private:
      * this function returns true while there is still a move to be selected
      *
      * the sorting works like this:
-     * 1) winning captures (PxQ)
-     * 2) losing captures (QxP)
-     * 3) quiet moves
+     * 1) best move last time we searched this node
+     * 2) winning captures (PxQ)
+     * 3) losing captures (QxP)
+     * 4) quiet moves
      */
-    inline bool selectMove(std::vector<Move>& moveList, int index)
+    inline bool selectMove(Move previousBest, std::vector<Move>& moveList, int index)
     {
         if (index >= moveList.size())
         {
@@ -114,7 +128,11 @@ private:
 
         int bestIndex = index;
         int bestScore;
-        if (pieceCaptured != NONE)
+        if (move == previousBest)
+        {
+            bestScore = 3 * PIECE_SCORES[ENGINE_QUEEN];
+        }
+        else if (pieceCaptured != NONE)
         {
             // sort winning captures before losing captures (PxQ before QxP),
             // the score will always be at least the value of a pawn
@@ -133,7 +151,11 @@ private:
             pieceCaptured = getPieceCaptured(move);
 
             int score;
-            if (pieceCaptured != NONE)
+            if (move == previousBest)
+            {
+                score = 3 * PIECE_SCORES[ENGINE_QUEEN];
+            }
+            else if (pieceCaptured != NONE)
             {
                 score = PIECE_SCORES[ENGINE_QUEEN] +
                             PIECE_SCORES[pieceCaptured] -
@@ -150,16 +172,14 @@ private:
                 bestIndex = i;
             }
         }
-        // we found the index of the strongest capture.
-        // swap the best capture with the index we started with
+        // we found the index of the strongest move.
+        // swap the best move with the index we started with
         move = moveList[bestIndex];
         moveList[bestIndex] = moveList[index];
         moveList[index] = move;
 
         return true;
     }
-
 };
-
 
 #endif //DEEPENING1_SEARCH_H
